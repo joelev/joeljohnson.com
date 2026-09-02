@@ -52,7 +52,9 @@ html{scroll-snap-type:none}
 <div id="sections"></div>
 <script type="module">
 import * as THREE from 'three';
-let LH=innerHeight;   // layout height, frozen across small (toolbar) height changes so HTML and glyphs never drift apart
+// layout height: the LARGE viewport (toolbar collapsed), frozen so HTML and glyphs never drift apart; the toolbar simply covers the bottom edge while shown
+const largeVH=()=>{ const pr=document.createElement('div'); pr.style.cssText='position:fixed;top:0;left:0;width:1px;height:100lvh;visibility:hidden;pointer-events:none'; document.body.appendChild(pr); const h=pr.getBoundingClientRect().height; pr.remove(); return Math.max(innerHeight,h||0); };
+let LH=largeVH();
 const SANSES=[{name:'Inter 4.1 SemiBold 600',fam:"'InterV',Inter,sans-serif",w:600}];
 const SERIFS=[{name:'Inter 4.1 Thin 100',fam:"'InterV',Inter,sans-serif",w:100,scale:1.0}];
 await Promise.all([document.fonts.load("100 64px 'InterV'"),document.fonts.load("600 64px 'InterV'"),document.fonts.load("900 64px 'InterV'"),...SANSES.map(f=>document.fonts.load(`${f.w} 64px ${f.fam}`)),...SERIFS.map(f=>document.fonts.load(`${f.italic?'italic ':''}${f.w} 64px ${f.fam}`))]); await document.fonts.ready;
@@ -345,9 +347,9 @@ let ovl=q.get('nofade')?0:1; let pTarget=+(q.get('pd')||0), pcur=pTarget, last=p
 function scrollToScene(){ const p=scrollY/LH; let k=0; while(k<S-1&&p>=OFFS[k+1]) k++; return THREE.MathUtils.clamp(k+(p-OFFS[k])/SECS[k],0,S-1); }
 addEventListener('scroll',()=>{ pTarget=scrollToScene(); document.getElementById('hint').style.opacity=scrollY>40?0:1; },{passive:true});
 let resizeT=null, lastW=innerWidth, lastH=LH;
-addEventListener('resize',()=>{ const dw=Math.abs(innerWidth-lastW), dh=Math.abs(innerHeight-LH);
+addEventListener('resize',()=>{ const nh=largeVH(); const dw=Math.abs(innerWidth-lastW), dh=Math.abs(nh-LH);
   if(dw===0&&dh<=140) return;   // iOS address-bar show/hide: keep the frozen layout; nothing moves
-  LH=innerHeight; lastW=innerWidth; lastH=LH; setVH(); renderer.setPixelRatio(PR()); renderer.setSize(innerWidth,LH);
+  LH=nh; lastW=innerWidth; lastH=LH; setVH(); renderer.setPixelRatio(PR()); renderer.setSize(innerWidth,LH);
   vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ; vw=vh*innerWidth/LH; restCamera();
   clearTimeout(resizeT); resizeT=setTimeout(()=>rebuild(),200); });
 const mouse=new THREE.Vector2(); addEventListener('pointermove',e=>mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/LH*2-1)));

@@ -1,24 +1,7 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Joel Johnson · Narrative Strategy & Execution</title>
+<html><head><meta charset="utf-8"><title>Joel Johnson · Narrative Strategy &amp; Execution</title>
 <style>
-@font-face{font-family:'Inter';font-weight:600;font-style:normal;font-display:block;src:url(fonts/inter-600.woff2) format('woff2')}
-@font-face{font-family:'Cormorant Garamond';font-weight:300;font-display:block;src:url(fonts/cormorant-300.woff2) format('woff2')}
-@font-face{font-family:'EB Garamond';font-weight:400;font-display:block;src:url(fonts/ebgaramond-400.woff2) format('woff2')}
-@font-face{font-family:'Fraunces';font-weight:300;font-display:block;src:url(fonts/fraunces-300.woff2) format('woff2')}
-@font-face{font-family:'Instrument Serif';font-weight:400;font-display:block;src:url(fonts/instrumentserif-400.woff2) format('woff2')}
-@font-face{font-family:'Source Serif 4';font-weight:300;font-display:block;src:url(fonts/sourceserif-300.woff2) format('woff2')}
 @font-face{font-family:'InterV';font-weight:100 900;font-style:normal;font-display:block;src:url(fonts/InterVariable.woff2) format('woff2')}
-@font-face{font-family:'InterV';font-weight:100 900;font-style:italic;font-display:block;src:url(fonts/InterVariable-Italic.woff2) format('woff2')}
-@font-face{font-family:'InterThin';font-weight:100;font-style:normal;font-display:block;src:url(fonts/inter-100.woff2) format('woff2')}
-@font-face{font-family:'InterDisplay';font-weight:100;font-style:normal;font-display:block;src:url(fonts/interdisplay-100.woff2) format('woff2')}
-@font-face{font-family:'InterDisplay';font-weight:200;font-style:normal;font-display:block;src:url(fonts/interdisplay-200.woff2) format('woff2')}
-@font-face{font-family:'Inter Tight';font-weight:200;font-display:block;src:url(fonts/intertight-200.woff2) format('woff2')}
-@font-face{font-family:'Barlow Condensed';font-weight:200;font-display:block;src:url(fonts/barlowcond-200.woff2) format('woff2')}
-@font-face{font-family:'Archivo Narrow';font-weight:400;font-display:block;src:url(fonts/archivonarrow-400.woff2) format('woff2')}
-@font-face{font-family:'InterDisplay';font-weight:300;font-style:normal;font-display:block;src:url(fonts/interdisplay-300.woff2) format('woff2')}
-@font-face{font-family:'InterDisplay';font-weight:300;font-style:italic;font-display:block;src:url(fonts/interdisplay-300i.woff2) format('woff2')}
-@font-face{font-family:'InterDisplay';font-weight:700;font-style:normal;font-display:block;src:url(fonts/interdisplay-700.woff2) format('woff2')}
-@font-face{font-family:'InterDisplay';font-weight:900;font-style:normal;font-display:block;src:url(fonts/interdisplay-900.woff2) format('woff2')}
 :root{--serif:'InterV',Inter,sans-serif;--serifw:100;--serifs:normal;--sans:'InterV',Inter,sans-serif;--sansw:600}
 html{font-optical-sizing:auto}
 html{scroll-snap-type:y proximity}
@@ -68,9 +51,9 @@ body{font:14px/1.5 Inter,"Helvetica Neue",Helvetica,Arial,sans-serif}
 <div id="sections"></div>
 <script type="module">
 import * as THREE from 'three';
-const SANSES=[{name:'Inter 4.1 SemiBold 600',fam:"'InterV',Inter,sans-serif",w:600},{name:'Inter 4.1 Black 900',fam:"'InterV',Inter,sans-serif",w:900},{name:'Inter 4.1 Bold 700',fam:"'InterV',Inter,sans-serif",w:700}];
-const SERIFS=[{name:'Inter 4.1 Thin 100',fam:"'InterV',Inter,sans-serif",w:100,scale:1.0},{name:'Inter 4.1 ExtraLight 200',fam:"'InterV',Inter,sans-serif",w:200,scale:1.0},{name:'Inter 4.1 Thin Italic',fam:"'InterV',Inter,sans-serif",w:100,italic:true,scale:1.0},{name:'Inter Display 200',fam:"'InterDisplay',Inter,sans-serif",w:200,scale:1.0},{name:'Inter Display 300',fam:"'InterDisplay',Inter,sans-serif",w:300,scale:1.0},{name:'Inter Display 300 Italic',fam:"'InterDisplay',Inter,sans-serif",w:300,italic:true,scale:1.0},{name:'Inter Tight 200',fam:"'Inter Tight',Inter,sans-serif",w:200,scale:1.0},{name:'Barlow Condensed 200',fam:"'Barlow Condensed',sans-serif",w:200,scale:1.12},{name:'Archivo Narrow 400',fam:"'Archivo Narrow',sans-serif",w:400,scale:1.0},{name:'Cormorant Garamond 300',fam:"'Cormorant Garamond',Georgia,serif",w:300,scale:1.18},{name:'EB Garamond 400',fam:"'EB Garamond',Georgia,serif",w:400,scale:1.06},{name:'Fraunces 300',fam:"Fraunces,Georgia,serif",w:300,scale:1.0},{name:'Instrument Serif 400',fam:"'Instrument Serif',Georgia,serif",w:400,scale:1.1},{name:'Source Serif 4 300',fam:"'Source Serif 4',Georgia,serif",w:300,scale:1.0}];
-await Promise.all([document.fonts.load('600 64px Inter'),document.fonts.load("100 64px 'InterV'"),document.fonts.load("600 64px 'InterV'"),document.fonts.load("900 64px 'InterV'"),...SANSES.map(f=>document.fonts.load(`${f.w} 64px ${f.fam}`)),...SERIFS.map(f=>document.fonts.load(`${f.italic?'italic ':''}${f.w} 64px ${f.fam}`))]); await document.fonts.ready;
+const SANSES=[{name:'Inter 4.1 SemiBold 600',fam:"'InterV',Inter,sans-serif",w:600}];
+const SERIFS=[{name:'Inter 4.1 Thin 100',fam:"'InterV',Inter,sans-serif",w:100,scale:1.0}];
+await Promise.all([document.fonts.load("100 64px 'InterV'"),document.fonts.load("600 64px 'InterV'"),document.fonts.load("900 64px 'InterV'"),...SANSES.map(f=>document.fonts.load(`${f.w} 64px ${f.fam}`)),...SERIFS.map(f=>document.fonts.load(`${f.italic?'italic ':''}${f.w} 64px ${f.fam}`))]); await document.fonts.ready;
 const q=new URLSearchParams(location.search);
 // viewport unit that tracks the *visible* height (iOS toolbars change innerHeight but not 1vh)
 const setVH=()=>document.documentElement.style.setProperty('--vh',(innerHeight/100)+'px'); setVH();
@@ -167,7 +150,7 @@ const DSDEF={
 const DS={}, DSPEND={};
 function loadDS(k){ if(DS[k]) return Promise.resolve(DS[k]); if(DSPEND[k]) return DSPEND[k];
   return DSPEND[k]=fetch(DSDEF[k].file).then(r=>r.arrayBuffer()).then(b=>DS[k]=makeDS({...DSDEF[k],raw:new Uint16Array(b)})); }
-const DSORDER=['t3c','t3r','t1'];
+const DSORDER=['t3r'];
 let HDKEY=DSDEF[q.get('head')]?q.get('head'):'t3r', HD=null;
 const headReady=loadDS(HDKEY);
 // instance-buffer reservation must not depend on which datasets happen to be loaded:

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.45"
+   width="32"
+   height="24"
+   version="1.0"
+   sodipodi:docbase="/home/rugby471/Desktop"
+   sodipodi:docname="lh.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   sodipodi:modified="true">
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs5" />
+  <sodipodi:namedview
+     inkscape:window-height="712"
+     inkscape:window-width="1024"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     guidetolerance="10.0"
+     gridtolerance="10.0"
+     objecttolerance="10.0"
+     borderopacity="1.0"
+     bordercolor="#666666"
+     pagecolor="#ffffff"
+     id="base"
+     inkscape:zoom="11.991353"
+     inkscape:cx="5.7670094"
+     inkscape:cy="12.044327"
+     inkscape:window-x="0"
+     inkscape:window-y="6"
+     inkscape:current-layer="svg2" />
+  <g
+     id="g6150">
+    <path
+       sodipodi:nodetypes="ccccccccccccccccccccccccccc"
+       id="path5161"
+       d="M 12.015374,0.060007376 L 19.032574,0.060007376 L 19.032574,10.9691 L 19.062058,11.057552 L 22.084171,8.0354374 L 27.096456,8.0649214 L 30.074343,11.072294 L 30.074343,22.069837 L 32.093999,22.069837 L 32.093999,24.089493 L 23.116112,24.089493 L 23.116112,22.069837 L 25.106284,22.069837 L 25.0768,12.074752 L 24.081714,11.079665 L 21.096456,11.079665 L 20.105056,12.071066 L 19.091542,13.062467 L 19.091542,22.084579 L 21.12594,22.084579 L 21.12594,24.045267 L 12.074342,24.045267 L 12.074342,22.055095 L 14.079256,22.055095 L 14.079256,2.0649214 L 12.089084,2.0649214 L 12.089084,0.060007376"
+       style="fill:#b4c652;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path2251"
+       d="M -0.027476503,1.9994081 L 2.0364055,1.9994081 L 2.0069215,21.989582 L 0.0020074972,21.989582 L 0.0020074972,24.02398 L 8.9946365,23.994496 L 8.9946365,21.989582 L 7.0781745,21.989582 L 7.0781745,0.023978074 L -0.056960503,0.023978074 L -0.027476503,1.9994081 z "
+       style="fill:#b4c652;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+  </g>
+</svg>

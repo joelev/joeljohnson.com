@@ -1,0 +1,269 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Joel Johnson · Narrative Strategy & Execution</title>
+<style>
+@font-face{font-family:'Inter';font-weight:600;font-style:normal;font-display:block;src:url(fonts/inter-600.woff2) format('woff2')}
+@font-face{font-family:'Newsreader';font-weight:400;font-style:normal;font-display:block;src:url(fonts/newsreader-400.woff2) format('woff2')}
+html{scroll-snap-type:y proximity}
+html,body{margin:0;background:#000;color:#777}
+body{font:14px/1.5 Inter,"Helvetica Neue",Helvetica,Arial,sans-serif}
+#gl{position:fixed;inset:0;z-index:0}
+#gl canvas{display:block}
+.sec{height:160vh;scroll-snap-align:start;position:relative;z-index:1;pointer-events:none}
+.sec:last-child{height:100vh}
+#hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);color:#444;font-size:12px;letter-spacing:.2em;text-transform:uppercase;transition:opacity .6s;z-index:2;pointer-events:none}
+#dbg{position:fixed;left:14px;top:12px;color:#9a9a9a;background:rgba(0,0,0,.55);padding:8px 10px;border-radius:4px;font:13px/1.7 ui-monospace,Menlo,monospace;z-index:3;white-space:pre;display:block}
+#brochure{font-variant-ligatures:none;position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1;pointer-events:none;white-space:pre}
+#brochure div{line-height:1.25}
+.sans{font-family:Inter,"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:600}
+.serif{font-family:Newsreader,Georgia,"Times New Roman",serif;font-weight:400}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js"}}</script>
+</head><body>
+<div id="gl"></div>
+<div id="brochure"></div>
+<div id="hint">scroll</div>
+<div id="dbg"></div>
+<div id="sections"></div>
+<script type="module">
+import * as THREE from 'three';
+await Promise.all([document.fonts.load('600 64px Inter'),document.fonts.load('400 64px Newsreader')]); await document.fonts.ready;
+const q=new URLSearchParams(location.search);
+const meta=await (await fetch('data/meta.json')).json();
+const raw=new Uint16Array(await (await fetch('data/frames.bin')).arrayBuffer());
+const W=meta.w,H=meta.h,F=meta.frames,STEP=meta.step,FPS=meta.srcFps/STEP;
+const toIdx=o=>Math.min(F-1,Math.round(o/STEP));
+const B=meta.bounds, ZR=meta.zrange, cellW=(B[1]-B[0])/W, cellH=(B[3]-B[2])/H;
+const STRIDE=+(q.get('s')||3), GS=+(q.get('g')||2.4), AMB=+(q.get('amb')??0.3), ZSHIFT=0.42;
+const REST=toIdx(meta.rest), GESTURE=meta.segments[0];
+const CAMZ=1.25, FOV=30, SEC=1.6, HOLD=0.5;
+const dbg=document.getElementById('dbg');
+// live params
+const P={pts:+(q.get('pts')||1), glyph:+(q.get('gl')||1), bg:+(q.get('bg')||0.22), glitch:+(q.get('glitch')??1)};
+
+// ---------- content ----------
+const BRANDS=[{k:'generalmotors'},{k:'ibm'},{k:'twitch'},{k:'ford'},{k:'audi'},{k:'jetzero'},{k:'airstream'},{k:'dashlane'},{k:'roadtrippers'},{k:'stellaartois',file:'logos/stellaartois.png'},{text:'Thor Industries'},{text:'Array Labs'},{text:'Veho'}];
+const PUBS=[{k:'wired',note:'cover writer'},{text:'Wirecutter',note:'founding team'},{k:'gizmodo',note:'editor'},{text:'Lifehacker'},{k:'popularmechanics',note:'columnist'},{k:'gq'},{text:'American Photo',note:'cover writer'},{k:'roadandtrack'}];
+const SKILLS=['Narrative strategy','Editorial leadership','Executive communications','Corporate vision frameworks','Brand identity direction','Launch & go-to-market','Integrated campaigns','Audience growth & analytics','Crisis & community comms','Documentary & video','AI workflow & systems','AI-search measurement'];
+const SCENES=[
+ {type:'brochure'},
+ {type:'claim', bg:'generalmotors', lines:[{t:'Zero Crashes,',size:0.06},{t:'Zero Emissions,',size:0.06},{t:'Zero Congestion.',size:0.06,gap:0.05}], caption:['General Motors asked me to create their "Zero, Zero, Zero" corporate vision framework,','which has served as primary investor and employee narrative for nearly a decade.']},
+ {type:'claim', bg:'ibm', lines:[{t:'2M views',size:0.075},{t:'in 48 hours.',size:0.075,gap:0.05}], caption:['IBM asked me to develop an earned-social campaign','translating mainframe heritage for cloud developers.']},
+ {type:'skills', title:"What I've Done"},
+ {type:'editorial', title:'Editorial Leadership & Journalism'},
+ {type:'close', line:"Let's find your signal and go make some noise.", caption:'joeljohnson@gmail.com · New York'},
+];
+const S=SCENES.length;
+document.getElementById('sections').innerHTML=SCENES.map(()=>'<div class="sec"></div>').join('');
+
+// ---------- glyph atlases (0 = Inter 600, 1 = Newsreader 400) ----------
+const G=16,CELL=64;
+const FONTS=[{fam:'Inter,"Helvetica Neue",Helvetica,Arial,sans-serif',w:600,cls:'sans'},{fam:'Newsreader,Georgia,"Times New Roman",serif',w:400,cls:'serif'}];
+const POOL='JOELJOHNSONABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789&?!@#%*+-/=<>{}[]();:.,';
+let chars=''; const seen=new Set();
+const allText=POOL+SCENES.flatMap(s=>[...(s.lines||[]).map(l=>l.t),...(s.caption||[]),s.title||'',s.line||'']).join('')+SKILLS.join('')+BRANDS.concat(PUBS).map(b=>(b.text||'')+(b.note||'')).join('')+'abcdefghijklmnopqrstuvwxyz\'’"·JOEL JOHNSONNarrative Strategy & ExecutionI translate technical and customer truths into narratives that earn trust.Let\'s fall in love with your mission again.';
+for(const ch of allText) if(ch!==' '&&!seen.has(ch)){seen.add(ch);chars+=ch;}
+chars=chars.slice(0,G*G); const gidx=(ch,f=0)=>{const i=chars.indexOf(ch);return (i<0?0:i)+256*f;}; const NPOOL=POOL.length;
+function makeAtlas(font){ const cv=document.createElement('canvas'); cv.width=cv.height=G*CELL; const ctx=cv.getContext('2d'); ctx.fillStyle='#000'; ctx.fillRect(0,0,cv.width,cv.height); ctx.fillStyle='#fff'; ctx.font=`${font.w} ${CELL*0.82}px ${font.fam}`; ctx.textAlign='center'; ctx.textBaseline='middle'; for(let i=0;i<chars.length;i++) ctx.fillText(chars[i],(i%G)*CELL+CELL/2,Math.floor(i/G)*CELL+CELL/2+CELL*0.04); const t=new THREE.CanvasTexture(cv); t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.anisotropy=4; return t; }
+const atlas0=makeAtlas(FONTS[0]), atlas1=makeAtlas(FONTS[1]);
+const meas=document.createElement('canvas').getContext('2d');
+function advance(ch,size,f=0){ meas.font=`${FONTS[f].w} 100px ${FONTS[f].fam}`; return meas.measureText(ch).width/100*size; }
+function textWidth(t,size,f=0){ let w=0; for(const ch of t) w+=advance(ch,size,f); return w; }
+
+// ---------- world / camera ----------
+let vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ, vw=vh*innerWidth/innerHeight;
+const TGT=new THREE.Vector3(0,-0.02,0.05);
+const camera=new THREE.PerspectiveCamera(FOV,innerWidth/innerHeight,0.05,20);
+function restCamera(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); camera.position.set(TGT.x,TGT.y,TGT.z+(CAMZ-TGT.z)); camera.lookAt(TGT); camera.updateMatrixWorld(); }
+restCamera();
+function screenToZ0(cx,cy){ const nd=new THREE.Vector3(cx/innerWidth*2-1,-(cy/innerHeight*2-1),0.5).unproject(camera); const dir=nd.sub(camera.position).normalize(); const t=-camera.position.z/dir.z; return camera.position.clone().add(dir.multiplyScalar(t)); }
+const tscale=()=>THREE.MathUtils.clamp(vw/1.05,0.55,1);
+
+// ---------- masks ----------
+const masks={};
+function maskFromCanvas(c){ const x=c.getContext('2d',{willReadFrequently:true}); const d=x.getImageData(0,0,c.width,c.height).data; const a=new Uint8Array(c.width*c.height); let minx=c.width,maxx=0,miny=c.height,maxy=0,n=0; for(let i=0;i<a.length;i++){ if(d[i*4+3]>100){ a[i]=1; n++; const px=i%c.width, py=Math.floor(i/c.width); if(px<minx)minx=px; if(px>maxx)maxx=px; if(py<miny)miny=py; if(py>maxy)maxy=py; } } return {a,w:c.width,h:c.height,minx,maxx,miny,maxy,n}; }
+async function loadMask(key,file){ if(masks[key]) return masks[key]; const img=new Image(); img.src=file||('logos/'+key+'.svg'); await img.decode().catch(()=>{}); const iw=img.naturalWidth||300, ih=img.naturalHeight||150; const sc=600/Math.max(iw,ih); const c=document.createElement('canvas'); c.width=Math.ceil(iw*sc); c.height=Math.ceil(ih*sc); c.getContext('2d',{willReadFrequently:true}).drawImage(img,0,0,c.width,c.height); return masks[key]=maskFromCanvas(c); }
+function textMask(text,px=160){ const key='text:'+text; if(masks[key]) return masks[key]; const c=document.createElement('canvas'); const x=c.getContext('2d',{willReadFrequently:true}); x.font=`700 ${px}px ${FONTS[0].fam}`; c.width=Math.ceil(x.measureText(text).width)+20; c.height=Math.ceil(px*1.3); x.font=`700 ${px}px ${FONTS[0].fam}`; x.textBaseline='middle'; x.fillStyle='#fff'; x.fillText(text,10,c.height/2); return masks[key]=maskFromCanvas(c); }
+function fitBox(m,boxW,boxH){ const bw=m.maxx-m.minx+1, bh=m.maxy-m.miny+1; const sc=Math.min(boxW/bw,boxH/bh); return {w:bw*sc,h:bh*sc,sc}; }
+function sampleMask(m,cx,cy,boxW,boxH,o={}){ const bw=m.maxx-m.minx+1, bh=m.maxy-m.miny+1; const sc=Math.min(boxW/bw,boxH/bh); const target=(o.target||220)*P.pts; const step=Math.max(1.5,Math.sqrt(m.n/target)); const items=[]; const gsz=Math.max(0.0045,step*sc*(o.glyph||1.2)*P.glyph);
+  for(let py=m.miny;py<=m.maxy;py+=step)for(let px=m.minx;px<=m.maxx;px+=step){ const jx=px+(Math.random()-0.5)*step*0.6, jy=py+(Math.random()-0.5)*step*0.6; const sx=Math.round(Math.min(m.w-1,Math.max(0,jx))), sy=Math.round(Math.min(m.h-1,Math.max(0,jy))); if(m.a[sy*m.w+sx]){ items.push({x:cx+(jx-(m.minx+bw/2))*sc, y:cy-(jy-(m.miny+bh/2))*sc, z:(o.z||0)+(Math.random()-0.5)*0.006, g:Math.floor(Math.random()*NPOOL), b:(o.b||0.8)*(0.85+Math.random()*0.3), s:gsz, w:o.w||0}); } }
+  return {items,w:bw*sc,h:bh*sc}; }
+function balancedRows(n,maxCols){ const rows=Math.ceil(n/maxCols); const base=Math.floor(n/rows), extra=n%rows; const out=[]; for(let r=0;r<rows;r++) out.push(base+(r<extra?1:0)); return out; }
+function gridCenters(n,maxCols,cellW,cellH,gapX,gapY,topY){ const rows=balancedRows(n,maxCols); const out=[]; let i=0; rows.forEach((cnt,r)=>{ const rowW=cnt*cellW+(cnt-1)*gapX; for(let c=0;c<cnt;c++,i++) out.push({x:-rowW/2+c*(cellW+gapX)+cellW/2,y:topY-cellH/2-r*(cellH+gapY)}); }); return {centers:out,height:rows.length*cellH+(rows.length-1)*gapY}; }
+async function maskFor(b){ return b.k?await loadMask(b.k,b.file):textMask(b.text); }
+
+// ---------- head ----------
+const st=STRIDE, cw=Math.floor(W/st), chh=Math.floor(H/st);
+const used=[REST]; for(let o=GESTURE[0];o<=GESTURE[1];o+=STEP*4) used.push(toIdx(o));
+const headCells=[];
+for(let j=0;j<chh;j++)for(let i=0;i<cw;i++){ const ix=i*st+Math.floor(st/2), iy=j*st+Math.floor(st/2); let any=false; for(const f of used){ if(raw[f*W*H+iy*W+ix]>0){any=true;break;} } if(any) headCells.push([ix,iy]); }
+const Mh=headCells.length;
+const L=new THREE.Vector3(-0.55,0.5,0.68).normalize();
+function dep(fi,fj,m,ix,iy){ if(ix<0||iy<0||ix>=W||iy>=H) return 0; const a=raw[fi*W*H+iy*W+ix]/65535, b=raw[fj*W*H+iy*W+ix]/65535; if(a>0&&b>0) return a+(b-a)*m; return Math.max(a,b); }
+
+// ---------- text layout ----------
+function textItems(t,size,cx,y,bright,f=0,w=0){ const items=[]; let x=cx-textWidth(t,size,f)/2; for(const ch of t){ const a=advance(ch,size,f); if(ch!==' ') items.push({x:x+a/2,y,z:0,g:gidx(ch,f),b:bright,s:size/0.82,w}); x+=a; } return items; }
+function layoutLines(lines,cx,topY){ const items=[]; let y=topY; for(const l of lines){ const size=l.size; y-=size*1.25*0.5; items.push(...textItems(l.t,size,cx,y,l.bright??1,l.f||0)); y-=size*1.25*0.5+(l.gap||0); } return {items,bottom:y}; }
+function linesHeight(lines){ return lines.reduce((a,l)=>a+l.size*1.25+(l.gap||0),0); }
+
+// ---------- instance buffers ----------
+let N=0; const scenesBuilt=[];
+function swarmHome(i,seed,pos,misc,k){ pos[k*3]=(seed[i*3]-0.5)*1.9*Math.max(1,vw); pos[k*3+1]=(seed[i*3+1]-0.5)*1.3; pos[k*3+2]=-0.12-seed[i*3+2]*0.7; misc[k*4]=Math.floor(seed[i*3+2]*NPOOL); misc[k*4+1]=(0.06+0.05*seed[i*3+1])*AMB; misc[k*4+2]=0.012; misc[k*4+3]=1; }
+function putItems(items,from,pos,misc){ const M=Math.min(from+items.length,N); for(let k=from;k<M;k++){ const it=items[k-from]; pos[k*3]=it.x;pos[k*3+1]=it.y;pos[k*3+2]=it.z; misc[k*4]=it.g;misc[k*4+1]=it.b;misc[k*4+2]=it.s;misc[k*4+3]=it.w||0; } return M; }
+function itemsToFill(items){ return (pos,misc,seed)=>{ const M=putItems(items,0,pos,misc); for(let k=M;k<N;k++) swarmHome(k,seed,pos,misc,k); }; }
+function headFill(fi,fj,m,off,extras){ return (pos,misc,seed)=>{ const zs=ZR[1]-ZR[0], sz=cellW*STRIDE*GS;
+  for(let k=0;k<Mh;k++){ const [ix,iy]=headCells[k]; const d=dep(fi,fj,m,ix,iy); if(d<=0){ swarmHome(k,seed,pos,misc,k); continue; }
+    const dl=dep(fi,fj,m,ix-st,iy), dr=dep(fi,fj,m,ix+st,iy), dd=dep(fi,fj,m,ix,iy-st), du=dep(fi,fj,m,ix,iy+st);
+    const pl=dl>0?1:0,pr=dr>0?1:0,pd=dd>0?1:0,pu=du>0?1:0;
+    const gx=((pr?dr:d)-(pl?dl:d))*zs/((pl+pr)*st*cellW+1e-4), gy=((pu?du:d)-(pd?dd:d))*zs/((pd+pu)*st*cellH+1e-4);
+    let nx=-gx,ny=-gy,nz=1; const nl=Math.hypot(nx,ny,nz); nx/=nl;ny/=nl;nz/=nl;
+    const diff=Math.max(0,nx*L.x+ny*L.y+nz*L.z), rim=Math.pow(1-Math.max(nz,0),1.5);
+    let br=0.08+0.75*diff+0.25*rim; const edge=(Math.min(pl,pr,pd,pu)<1?1:0)+((Math.max(Math.abs(dr-dl),Math.abs(du-dd))*zs>0.035)?1:0); br=br+(1-br)*Math.min(1,edge)*0.9; br*=0.55+0.45*d;
+    pos[k*3]=B[0]+(ix+0.5)*cellW+off.x; pos[k*3+1]=B[2]+(iy+0.5)*cellH-0.03+off.y; pos[k*3+2]=ZR[0]+d*zs+ZSHIFT;
+    misc[k*4]=Math.floor(seed[k*3]*NPOOL); misc[k*4+1]=br; misc[k*4+2]=sz*(0.85+0.3*seed[k*3+1]); misc[k*4+3]=4; }
+  const M=putItems(extras,Mh,pos,misc); for(let k=M;k<N;k++) swarmHome(k,seed,pos,misc,k); }; }
+
+// ---------- scene builders ----------
+const brochureEl=document.getElementById('brochure');
+async function buildBrochure(){ const ts=tscale(), ppw=innerHeight/vh;
+  const nameSize=0.058*ts; const W0=textWidth('JOEL JOHNSON',nameSize);
+  const fit=(t,cap,f)=>Math.min(cap*ts, W0/textWidth(t,1,f));
+  const blocks=[
+    {t:'JOEL JOHNSON',size:nameSize,bright:1,gap:0.012,f:0},
+    {t:'Narrative Strategy & Execution',size:fit('Narrative Strategy & Execution',0.04,0),bright:0.7,gap:0.04,f:0},
+    {logos:true,gap:0.045},
+    {t:'I translate technical and customer truths into narratives that earn trust.',size:fit('I translate technical and customer truths into narratives that earn trust.',0.03,1),bright:1,gap:0.012,f:1},
+    {t:"Let's fall in love with your mission again.",size:fit("Let's fall in love with your mission again.",0.04,1),bright:1,gap:0,f:1},
+  ];
+  const bm=await Promise.all(BRANDS.map(maskFor)); const gapX=0.026*ts, gapY=0.024*ts; const boxW=(W0-4*gapX)/5, boxH=0.052*ts;
+  const grid0=gridCenters(BRANDS.length,5,boxW,boxH,gapX,gapY,0); const wallH=grid0.height;
+  brochureEl.innerHTML=''; const items=[]; let wallDiv=null;
+  for(const b of blocks){ if(b.logos){ const d=document.createElement('div'); d.style.height=(wallH*ppw)+'px'; d.style.marginBottom=(b.gap*ppw)+'px'; brochureEl.appendChild(d); wallDiv=d; continue; }
+    const d=document.createElement('div'); d.className=FONTS[b.f].cls; d.style.fontSize=(b.size*ppw)+'px'; d.style.marginBottom=(b.gap*ppw)+'px'; const g=Math.round(b.bright*255); d.style.color=`rgb(${g},${g},${g})`; d.dataset.f=b.f;
+    for(const ch of b.t){ const sp=document.createElement('span'); sp.textContent=ch; d.appendChild(sp); } brochureEl.appendChild(d); }
+  { const r=wallDiv.getBoundingClientRect(); const top=screenToZ0(innerWidth/2,r.top); const gr=gridCenters(BRANDS.length,5,boxW,boxH,gapX,gapY,top.y-0.01);
+    bm.forEach((m,i)=>{ const c=gr.centers[i]; items.push(...sampleMask(m,c.x,c.y,boxW,boxH,{target:BRANDS[i].text?260:300,b:0.85,w:2,glyph:1.15}).items); }); }
+  const ppwi=vh/innerHeight;
+  for(const d of brochureEl.children){ if(!d.children.length) continue; const f=+d.dataset.f; const size=parseFloat(d.style.fontSize)*ppwi; const br=parseInt(d.style.color.slice(4))/255; for(const sp of d.children){ if(sp.textContent===' ') continue; const r=sp.getBoundingClientRect(); const wpt=screenToZ0(r.left+r.width/2,r.top+r.height/2); items.push({x:wpt.x,y:wpt.y-size*(f?0.0:0.02),z:0,g:gidx(sp.textContent,f),b:br,s:size/0.82,w:0}); } }
+  return items; }
+async function buildClaim(sc){ const ts=tscale(); const lines=sc.lines.map(l=>({...l,size:l.size*ts})); const caps=sc.caption.map(t=>({t,size:0.019*ts,bright:0.6,f:1}));
+  const total=linesHeight(lines)+linesHeight(caps); const a=layoutLines(lines,0,total/2); const c=layoutLines(caps,0,a.bottom-0.01); const items=[...a.items,...c.items];
+  if(sc.bg){ const m=await loadMask(sc.bg); items.push(...sampleMask(m,0.02,0.02,0.78*ts,0.46*ts,{target:2600,b:P.bg,z:-0.3,w:3,glyph:1.1}).items); }
+  return items; }
+function buildSkills(sc){ const ts=tscale(); const items=[...textItems(sc.title,0.02*ts,0,0.27*ts,0.6,1)];
+  const cols=vw>0.8?2:1; const size=0.03*ts; const colW=0.42*ts; const rows=Math.ceil(SKILLS.length/cols); const lh=size*1.7; let y0=(rows-1)*lh/2-0.02;
+  SKILLS.forEach((t,i)=>{ const col=i%cols, row=Math.floor(i/cols); const cx=cols===2?(col?colW/2:-colW/2):0; items.push(...textItems(t,size,cx,y0-row*lh,0.85,0)); });
+  return items; }
+async function buildEditorial(sc){ const ts=tscale(); const items=[...textItems(sc.title,0.02*ts,0,0.28*ts,0.6,1)];
+  const pm=await Promise.all(PUBS.map(maskFor)); const boxW=0.3*ts, boxH=0.062*ts, colW=0.5*ts, rowH=0.085*ts; const rows=Math.ceil(PUBS.length/2); let y=(rows-1)*rowH/2-0.02;
+  pm.forEach((m,i)=>{ const p=PUBS[i]; const col=i%2, row=Math.floor(i/2); const x0=(col?colW/2:-colW/2)-boxW/2; const fb=fitBox(m,boxW,boxH); const cy=y-row*rowH; const s=sampleMask(m,x0+fb.w/2,cy,boxW,boxH,{target:p.text?300:420,b:0.85,glyph:1.15}); items.push(...s.items);
+    if(p.note){ const ns=0.014*ts; items.push(...textItems(p.note,ns,x0+fb.w+0.016*ts+textWidth(p.note,ns,1)/2,cy-fb.h/2+ns*0.5,0.5,1)); } });
+  return items; }
+function buildClose(sc){ const ts=tscale(); const a=layoutLines([{t:sc.line,size:0.026*ts,bright:1,gap:0.012,f:1},{t:sc.caption,size:0.015*ts,bright:0.5,f:1}],0,-0.22*ts); return {extras:a.items, off:{x:0,y:0.1}}; }
+async function buildScenes(){ const built=[]; let maxM=0;
+  for(const sc of SCENES){ let it;
+    if(sc.type==='brochure') it=await buildBrochure();
+    else if(sc.type==='claim') it=await buildClaim(sc);
+    else if(sc.type==='skills') it=buildSkills(sc);
+    else if(sc.type==='editorial') it=await buildEditorial(sc);
+    else if(sc.type==='close'){ const r=buildClose(sc); built.push({head:true,extras:r.extras,off:r.off}); maxM=Math.max(maxM,Mh+r.extras.length); continue; }
+    built.push({static:itemsToFill(it)}); maxM=Math.max(maxM,it.length); }
+  scenesBuilt.length=0; scenesBuilt.push(...built); return maxM; }
+let maxM=await buildScenes(); N=maxM+Math.max(300,Math.floor(maxM*0.3));
+
+// ---------- geometry / material ----------
+const seed=new Float32Array(N*3); let sd=987654321; const rnd=()=>{sd^=sd<<13;sd^=sd>>>17;sd^=sd<<5;return ((sd>>>0)%1000000)/1000000;};
+for(let i=0;i<N*3;i++) seed[i]=rnd();
+const posA=new Float32Array(N*3),posB=new Float32Array(N*3),miscA=new Float32Array(N*4),miscB=new Float32Array(N*4);
+const geo=new THREE.InstancedBufferGeometry().copy(new THREE.PlaneGeometry(1,1)); geo.instanceCount=N;
+const attrPosA=new THREE.InstancedBufferAttribute(posA,3), attrPosB=new THREE.InstancedBufferAttribute(posB,3), attrMiscA=new THREE.InstancedBufferAttribute(miscA,4), attrMiscB=new THREE.InstancedBufferAttribute(miscB,4);
+for(const a of [attrPosA,attrPosB,attrMiscA,attrMiscB]) a.setUsage(THREE.DynamicDrawUsage);
+geo.setAttribute('aPosA',attrPosA); geo.setAttribute('aPosB',attrPosB); geo.setAttribute('aMiscA',attrMiscA); geo.setAttribute('aMiscB',attrMiscB); geo.setAttribute('aSeed',new THREE.InstancedBufferAttribute(seed,3));
+const uniforms={uT:{value:0},uTime:{value:0},uAtlas:{value:atlas0},uAtlas2:{value:atlas1},uAtlasGrid:{value:G},uFade:{value:0},uDust:{value:0},uGlitch:{value:0}};
+const mat=new THREE.ShaderMaterial({uniforms,vertexShader:`
+attribute vec3 aPosA,aPosB,aSeed; attribute vec4 aMiscA,aMiscB;
+uniform float uT,uTime,uAtlasGrid,uFade,uDust,uGlitch; varying vec2 vUv; varying float vBright; varying float vFont;
+float hash(float n){return fract(sin(n)*43758.5453);}
+float visOf(float w){ return w<0.5?uFade:(w<1.5?uDust:(w<2.5?1.0:uFade)); }
+float driftOf(float w){ return w<0.5?0.0:(w<1.5?0.05:(w<2.5?0.0:(w<3.5?0.012:0.0))); }
+void main(){
+  float stag=aSeed.z*0.35; float e=smoothstep(0.0,1.0,clamp((uT-stag)/0.65,0.0,1.0));
+  vec3 A=aPosA,Bp=aPosB; float moving=step(0.02,distance(A,Bp));
+  vec3 dir=normalize(vec3(aSeed.xy-0.5,aSeed.z-0.5)+vec3(1e-4));
+  vec3 p=mix(A,Bp,e)+dir*sin(e*3.14159)*(0.18+0.35*aSeed.x)*moving;
+  float wA=aMiscA.w, wB=aMiscB.w;
+  float drift=mix(driftOf(wA),driftOf(wB),e);
+  p+=drift*vec3(sin(uTime*0.7+aSeed.x*60.0),cos(uTime*0.5+aSeed.y*60.0),sin(uTime*0.9+aSeed.z*60.0));
+  // head: living jitter + scanline slips during glitch bursts
+  float headness=mix(step(3.5,wA),step(3.5,wB),e);
+  p+=headness*0.0015*vec3(sin(uTime*2.1+aSeed.x*60.0),cos(uTime*1.7+aSeed.y*60.0),sin(uTime*2.9+aSeed.z*60.0));
+  float row=floor(p.y/0.012); float tick=floor(uTime*9.0);
+  float slip=step(0.985-uGlitch*0.25,hash(row*3.1+tick))*(hash(row*7.7+tick)-0.5)*0.16*uGlitch;
+  p.x+=slip*headness;
+  float g=(e<0.5)?aMiscA.x:aMiscB.x; vFont=step(255.5,g); g-=256.0*vFont;
+  float br=mix(aMiscA.y,aMiscB.y,e); float sz=mix(aMiscA.z,aMiscB.z,e);
+  br*=1.0+0.25*sin(e*3.14159)*moving;
+  br*=1.0+headness*step(0.5,uGlitch)*0.6*step(0.93,hash(floor(aSeed.y*400.0)+tick));
+  float vis=mix(visOf(wA),visOf(wB),e);
+  vBright=br*vis;
+  vec4 mv=modelViewMatrix*vec4(p,1.0); mv.xy+=position.xy*sz; gl_Position=projectionMatrix*mv;
+  vec2 cell=vec2(mod(g,uAtlasGrid),floor(g/uAtlasGrid)); vUv=vec2((cell.x+uv.x)/uAtlasGrid,1.0-(cell.y+1.0-uv.y)/uAtlasGrid);
+}`,fragmentShader:`
+uniform sampler2D uAtlas,uAtlas2; varying vec2 vUv; varying float vBright; varying float vFont;
+void main(){ float a=mix(texture2D(uAtlas,vUv).r,texture2D(uAtlas2,vUv).r,vFont); if(a<0.45||vBright<0.004) discard; gl_FragColor=vec4(vec3(min(vBright,1.0)),1.0); }`});
+const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); document.getElementById('gl').appendChild(renderer.domElement);
+const scene=new THREE.Scene(); const mesh=new THREE.Mesh(geo,mat); mesh.frustumCulled=false; scene.add(mesh);
+
+// ---------- pairs / head ----------
+let pair=-1; const headState=SCENES.map(()=>({anim:null,restT:0}));
+function fillInto(idx,which){ const sb=scenesBuilt[idx]; const pos=which==='A'?posA:posB, misc=which==='A'?miscA:miscB;
+  if(sb.head){ const hs=headState[idx]; let fi=REST,fj=REST,m=0; if(hs.anim){ fi=hs.anim.fi;fj=hs.anim.fj;m=hs.anim.m; } headFill(fi,fj,m,sb.off,sb.extras)(pos,misc,seed); }
+  else sb.static(pos,misc,seed);
+  (which==='A'?attrPosA:attrPosB).needsUpdate=true; (which==='A'?attrMiscA:attrMiscB).needsUpdate=true; }
+function setPair(k){ pair=k; fillInto(k,'A'); fillInto(Math.min(S-1,k+1),'B'); }
+// close-scene head: gesture starts while forming, then loops with rest beats
+function tickHead(idx,active,dt){ const hs=headState[idx]; if(!scenesBuilt[idx]||!scenesBuilt[idx].head) return false;
+  if(!active){ if(hs.anim){ hs.anim=null; return true; } hs.restT=0; return false; }
+  if(!hs.anim){ hs.restT+=dt; if(hs.restT>(hs.everPlayed?2.6:0.2)){ hs.anim={phase:'play',t:0,fi:REST,fj:REST,m:0}; hs.restT=0; hs.everPlayed=true; } else return false; }
+  const a=hs.anim; a.t+=dt;
+  if(a.phase==='play'){ const f=GESTURE[0]/STEP+a.t*FPS, i=Math.floor(f), end=toIdx(GESTURE[1]); if(i>=end){ hs.anim={phase:'return',fi:end,fj:REST,m:0,t:0}; } else { a.fi=i;a.fj=Math.min(i+1,end);a.m=f-i; } }
+  else if(a.phase==='return'){ const m=Math.min(1,a.t/0.9); a.m=m*m*(3-2*m); if(m>=1){ hs.anim=null; } }
+  return true; }
+
+// ---------- hotkeys ----------
+let rebuilding=false; async function rebuild(){ if(rebuilding) return; rebuilding=true; try{ await buildScenes(); setPair(pair); } finally{ rebuilding=false; } }
+addEventListener('keydown',e=>{ let rb=false;
+  if(e.key==='['){P.pts=Math.max(0.3,P.pts/1.25);rb=true;} if(e.key===']'){P.pts=Math.min(4,P.pts*1.25);rb=true;}
+  if(e.key==='-'){P.glyph=Math.max(0.4,P.glyph/1.15);rb=true;} if(e.key==='='||e.key==='+'){P.glyph=Math.min(3,P.glyph*1.15);rb=true;}
+  if(e.key===','){P.bg=Math.max(0.05,P.bg/1.2);rb=true;} if(e.key==='.'){P.bg=Math.min(0.8,P.bg*1.2);rb=true;}
+  if(e.key==='g'){P.glitch=P.glitch>0?0:1;} if(e.key==='h'){dbg.style.display=dbg.style.display==='block'?'none':'block';}
+  if(rb) rebuild(); });
+
+// ---------- scroll / loop ----------
+let ovl=q.get('nofade')?0:1; let pTarget=+(q.get('pd')||0), pcur=pTarget, last=performance.now()/1000, fadeT=q.get('nofade')?1:0; if(q.get('nofade')) uniforms.uDust.value=1;
+addEventListener('scroll',()=>{ pTarget=THREE.MathUtils.clamp(scrollY/innerHeight/SEC,0,S-1); document.getElementById('hint').style.opacity=scrollY>40?0:1; },{passive:true});
+let resizeT=null; addEventListener('resize',()=>{ clearTimeout(resizeT); resizeT=setTimeout(async()=>{ renderer.setSize(innerWidth,innerHeight); vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ; vw=vh*innerWidth/innerHeight; restCamera(); await rebuild(); },150); });
+const mouse=new THREE.Vector2(); addEventListener('pointermove',e=>mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight*2-1)));
+let yaw=0, glitchEnv=0, nextBurst=2;
+setPair(Math.min(S-2,Math.floor(pcur)));
+function loop(){ const now=performance.now()/1000, dt=Math.min(0.05,now-last); last=now; uniforms.uTime.value=now;
+  const clean=pTarget<0.004 && pcur<0.004 && !q.get('nofade'); ovl+=((clean?1:0)-ovl)*(1-Math.pow(0.0001,dt)); brochureEl.style.opacity=ovl.toFixed(3);
+  fadeT+=((clean?0:1)-fadeT)*(1-Math.pow(0.0001,dt)); uniforms.uFade.value=fadeT;
+  uniforms.uDust.value+=((clean?0:1)-uniforms.uDust.value)*(1-Math.pow(0.05,dt));
+  pcur+=(pTarget-pcur)*(1-Math.pow(0.001,dt));
+  let k=Math.min(S-2,Math.floor(pcur)); let local=pcur-k; if(pcur>=S-1){k=S-2;local=1;}
+  const t=THREE.MathUtils.smoothstep(local,HOLD,1);   // hold, then fly
+  if(k!==pair) setPair(k);
+  uniforms.uT.value=t;
+  const hk=scenesBuilt[k].head?1:0, hk1=scenesBuilt[k+1].head?1:0; const headness=hk*(1-t)+hk1*t;
+  const chA=tickHead(k,hk&&t<0.7,dt), chB=tickHead(k+1,hk1&&t>0.35,dt);
+  if(chA) fillInto(k,'A'); if(chB) fillInto(k+1,'B');
+  // glitch bursts while the head is on screen
+  if(headness>0.3&&P.glitch>0){ if(now>nextBurst){ glitchEnv=1; nextBurst=now+1.8+Math.random()*2.5; } } glitchEnv=Math.max(0,glitchEnv-dt*2.2); uniforms.uGlitch.value=glitchEnv*P.glitch*headness;
+  yaw+=((Math.sin(now*0.15)*THREE.MathUtils.degToRad(10)*headness+mouse.x*0.08*headness)-yaw)*0.05;
+  const tgt=TGT, R=CAMZ-tgt.z;
+  camera.position.set(tgt.x+R*Math.sin(yaw)+mouse.x*0.02*headness, tgt.y+mouse.y*0.015*headness, tgt.z+R*Math.cos(yaw)); camera.lookAt(tgt);
+  renderer.render(scene,camera);
+  dbg.textContent=`SETTINGS  (h hides)\n[ ]  logo points   ×${P.pts.toFixed(2)}\n- =  glyph size    ×${P.glyph.toFixed(2)}\n, .  bg logo       ${P.bg.toFixed(2)}\ng    glitch        ${P.glitch?'on':'off'}\n\nscene ${k}  local ${local.toFixed(2)}  t ${t.toFixed(2)}`;
+  requestAnimationFrame(loop); }
+loop();
+</script></body></html>

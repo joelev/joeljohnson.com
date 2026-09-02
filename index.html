@@ -22,31 +22,42 @@
 :root{--serif:'InterV',Inter,sans-serif;--serifw:100;--serifs:normal;--sans:'InterV',Inter,sans-serif;--sansw:600}
 html{font-optical-sizing:auto}
 html{scroll-snap-type:y proximity}
-html,body{margin:0;background:#000;color:#777}
+html,body{margin:0;background:#000;color:#777;-webkit-text-size-adjust:100%}
+:root{--vh:1vh}
 body{font:14px/1.5 Inter,"Helvetica Neue",Helvetica,Arial,sans-serif}
 #gl{position:fixed;inset:0;z-index:0}
 #gl canvas{display:block}
-.sec{height:160vh;scroll-snap-align:start;position:relative;z-index:1;pointer-events:none}
-.sec:last-child{height:100vh}
-#hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);color:#444;font-size:12px;letter-spacing:.2em;text-transform:uppercase;transition:opacity .6s;z-index:2;pointer-events:none}
+.sec{height:calc(var(--vh)*160);scroll-snap-align:start;position:relative;z-index:1;pointer-events:none}
+.sec:last-child{height:calc(var(--vh)*100)}
+#hint{position:fixed;left:50%;top:calc(var(--vh)*100 - 46px);transform:translateX(-50%);color:#444;font-size:12px;letter-spacing:.2em;text-transform:uppercase;transition:opacity .6s;z-index:2;pointer-events:none}
 #dbg{position:fixed;left:14px;top:12px;color:#9a9a9a;background:rgba(0,0,0,.55);padding:8px 10px;border-radius:4px;font:13px/1.7 ui-monospace,Menlo,monospace;z-index:3;white-space:pre;display:none}
-#brochure{font-variant-ligatures:none;position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1;pointer-events:none;white-space:pre}
+#brochure{font-variant-ligatures:none;position:fixed;left:0;top:0;right:0;height:calc(var(--vh)*100);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1;pointer-events:none;white-space:pre}
 :root{--fg:#fff;--bg:#000;--mute:#9a9a9a}
 #brochure{display:block;font-family:'InterV',Inter,sans-serif;font-optical-sizing:auto;color:var(--fg);white-space:nowrap}
-#brochure .nav{position:absolute;right:4.5vw;top:2.4vh;font-size:14px;font-weight:400;display:flex;gap:2em;align-items:center}
+#brochure .nav{position:absolute;right:4.5vw;top:calc(var(--vh)*2.4);font-size:14px;font-weight:400;display:flex;gap:2em;align-items:center}
 #brochure .nav>.sep{color:var(--mute);opacity:.45;font-weight:100}
-#brochure .head{position:absolute;left:4.5vw;top:11vh;font-weight:600;line-height:.92;letter-spacing:0}
-#brochure .cols{position:absolute;left:4.5vw;right:4.5vw;bottom:7vh;display:flex;align-items:flex-start}
+#brochure .head{position:absolute;left:4.5vw;top:calc(var(--vh)*11);font-weight:600;line-height:.92;letter-spacing:0}
+#brochure .cols{position:absolute;left:4.5vw;right:4.5vw;bottom:calc(var(--vh)*7);display:flex;align-items:flex-start}
 #brochure .left{width:22%;flex:none}
-#brochure .sub{font-size:2.2vh;font-weight:400;line-height:1.3}
+#brochure .sub{font-size:calc(var(--vh)*2.2);font-weight:400;line-height:1.3}
 #brochure .btn{transition:transform 1.1s cubic-bezier(.5,0,.8,.4);will-change:transform} #brochure .btn.fly{transform:translateX(-130vw)}
-#brochure .btn{margin-top:2.4vh;height:4.6vh;background:var(--fg);border-radius:.5vh;color:var(--bg);display:flex;align-items:center;justify-content:flex-end;padding-right:1.6vh;box-sizing:border-box;font-size:2.2vh;font-weight:500}
-#brochure .tag{margin-top:2.6vh;font-size:1.5vh;font-weight:100;line-height:1.5;color:var(--fg)}
-#brochure .arrow{margin-top:2.2vh;font-size:3.2vh;font-weight:300;color:var(--fg);line-height:1}
-#brochure .tag p{margin:0 0 1.2vh 0}
+#brochure .btn{margin-top:calc(var(--vh)*2.4);height:calc(var(--vh)*4.6);background:var(--fg);border-radius:calc(var(--vh)*.5);color:var(--bg);display:flex;align-items:center;justify-content:flex-end;padding-right:calc(var(--vh)*1.6);box-sizing:border-box;font-size:calc(var(--vh)*2.2);font-weight:500}
+#brochure .tag{margin-top:calc(var(--vh)*2.6);font-size:calc(var(--vh)*1.5);font-weight:100;line-height:1.5;color:var(--fg)}
+#brochure .arrow{margin-top:calc(var(--vh)*2.2);font-size:calc(var(--vh)*3.2);font-weight:300;color:var(--fg);line-height:1}
+#brochure .tag p{margin:0 0 calc(var(--vh)*1.2) 0}
 #brochure .wall{flex:1;margin-left:5%;align-self:stretch}
 .sans{font-family:var(--sans);font-weight:var(--sansw)}
 .serif{font-family:var(--serif);font-weight:var(--serifw);font-style:var(--serifs);font-variant-ligatures:common-ligatures}
+/* --- narrow screens: single-column brochure --- */
+@media (max-width:699px){
+ #brochure .nav{font-size:12px;gap:1.1em}
+ #brochure .cols{display:block;bottom:calc(var(--vh)*10)}
+ #brochure .left{width:100%}
+ #brochure .wall{margin-left:0;display:block}
+ #brochure .sub{font-size:calc(var(--vh)*2.7)}
+ #brochure .tag{font-size:calc(var(--vh)*1.85);margin-top:calc(var(--vh)*2.2)}
+ #brochure .arrow{font-size:calc(var(--vh)*3.4);margin-top:calc(var(--vh)*1.6)}
+}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js"}}</script>
 </head><body>
@@ -61,8 +72,10 @@ const SANSES=[{name:'Inter 4.1 SemiBold 600',fam:"'InterV',Inter,sans-serif",w:6
 const SERIFS=[{name:'Inter 4.1 Thin 100',fam:"'InterV',Inter,sans-serif",w:100,scale:1.0},{name:'Inter 4.1 ExtraLight 200',fam:"'InterV',Inter,sans-serif",w:200,scale:1.0},{name:'Inter 4.1 Thin Italic',fam:"'InterV',Inter,sans-serif",w:100,italic:true,scale:1.0},{name:'Inter Display 200',fam:"'InterDisplay',Inter,sans-serif",w:200,scale:1.0},{name:'Inter Display 300',fam:"'InterDisplay',Inter,sans-serif",w:300,scale:1.0},{name:'Inter Display 300 Italic',fam:"'InterDisplay',Inter,sans-serif",w:300,italic:true,scale:1.0},{name:'Inter Tight 200',fam:"'Inter Tight',Inter,sans-serif",w:200,scale:1.0},{name:'Barlow Condensed 200',fam:"'Barlow Condensed',sans-serif",w:200,scale:1.12},{name:'Archivo Narrow 400',fam:"'Archivo Narrow',sans-serif",w:400,scale:1.0},{name:'Cormorant Garamond 300',fam:"'Cormorant Garamond',Georgia,serif",w:300,scale:1.18},{name:'EB Garamond 400',fam:"'EB Garamond',Georgia,serif",w:400,scale:1.06},{name:'Fraunces 300',fam:"Fraunces,Georgia,serif",w:300,scale:1.0},{name:'Instrument Serif 400',fam:"'Instrument Serif',Georgia,serif",w:400,scale:1.1},{name:'Source Serif 4 300',fam:"'Source Serif 4',Georgia,serif",w:300,scale:1.0}];
 await Promise.all([document.fonts.load('600 64px Inter'),document.fonts.load("100 64px 'InterV'"),document.fonts.load("600 64px 'InterV'"),document.fonts.load("900 64px 'InterV'"),...SANSES.map(f=>document.fonts.load(`${f.w} 64px ${f.fam}`)),...SERIFS.map(f=>document.fonts.load(`${f.italic?'italic ':''}${f.w} 64px ${f.fam}`))]); await document.fonts.ready;
 const q=new URLSearchParams(location.search);
+// viewport unit that tracks the *visible* height (iOS toolbars change innerHeight but not 1vh)
+const setVH=()=>document.documentElement.style.setProperty('--vh',(innerHeight/100)+'px'); setVH();
+const narrow=()=>innerWidth<700;
 const meta=await (await fetch('data/meta.json')).json();
-const raw=new Uint16Array(await (await fetch('data/frames.bin')).arrayBuffer());
 const W=meta.w,H=meta.h,F=meta.frames,STEP=meta.step,FPS=meta.srcFps/STEP;
 const toIdx=o=>Math.min(F-1,Math.round(o/STEP));
 const B=meta.bounds, ZR=meta.zrange, cellW=(B[1]-B[0])/W, cellH=(B[3]-B[2])/H;
@@ -86,7 +99,7 @@ const SCENES=[
  {type:'close', line:"Let's find your signal and go make some noise.", caption:'joeljohnson@gmail.com · New York'},
 ];
 const S=SCENES.length;
-document.getElementById('sections').innerHTML=SCENES.map((_,i)=>`<div class="sec" style="height:${SECS[i]*100}vh"></div>`).join('');
+document.getElementById('sections').innerHTML=SCENES.map((_,i)=>`<div class="sec" style="height:calc(var(--vh) * ${SECS[i]*100})"></div>`).join('');
 
 // ---------- glyph atlases (0 = Inter 600, 1 = Newsreader 400) ----------
 const G=16,CELL=112;
@@ -107,6 +120,9 @@ let atlasH=makeHeadAtlas();
 const meas=document.createElement('canvas').getContext('2d');
 function advance(ch,size,f=0){ meas.font=`${FONTS[f].italic?'italic ':''}${FONTS[f].w} 100px ${FONTS[f].fam}`; return meas.measureText(ch).width/100*size; }
 function textWidth(t,size,f=0){ let w=0; for(const ch of t) w+=advance(ch,size,f); return w; }
+// greedy word wrap in world units; returns [t] untouched when it already fits
+function wrapText(t,size,f,maxW){ if(textWidth(t,size,f)<=maxW) return [t]; const out=[]; let cur='';
+  for(const w of t.split(' ')){ const cand=cur?cur+' '+w:w; if(cur&&textWidth(cand,size,f)>maxW){ out.push(cur); cur=w; } else cur=cand; } if(cur) out.push(cur); return out; }
 
 // ---------- world / camera ----------
 let vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ, vw=vh*innerWidth/innerHeight;
@@ -141,14 +157,22 @@ function makeDS(o){ const ds={...o}; ds.cellW=(ds.B[1]-ds.B[0])/ds.W; ds.cellH=(
   const used=[]; if(ds.mode==='gesture'){ used.push(ds.rest); for(let f=ds.gesture[0];f<=ds.gesture[1];f+=4) used.push(f); } else { for(let f=ds.loop[0];f<=ds.loop[1];f+=6) used.push(f); }
   ds.cells=[]; for(let j=0;j<ch;j++)for(let i=0;i<cw;i++){ const ix=i*st+Math.floor(st/2), iy=j*st+Math.floor(st/2); let any=false; for(const f of used){ if(ds.raw[f*ds.W*ds.H+iy*ds.W+ix]>0){any=true;break;} } if(any) ds.cells.push([ix,iy]); }
   ds.Mh=ds.cells.length; return ds; }
-const DS={};
-DS.t1=makeDS({label:'take 1 · clean · gesture',raw,W,H,F,STEP,FPS,B,ZR,mode:'gesture',rest:REST,gesture:[Math.round(GESTURE[0]/STEP),toIdx(GESTURE[1])],zshift:0.42,stride:STRIDE,gs:1,yoff:0,rawLook:false});
-{ const m3=await (await fetch('data/take3/meta.json')).json(); const c=new Uint16Array(await (await fetch('data/take3/clean.bin')).arrayBuffer()); const r3=new Uint16Array(await (await fetch('data/take3/raw.bin')).arrayBuffer());
-  const lp=[Math.round((m3.loop[0]-m3.firstFrame)/m3.step),Math.round((m3.loop[1]-m3.firstFrame)/m3.step)]; const fps3=m3.srcFps/m3.step;
-  DS.t3c=makeDS({label:'take 3 · clean · loop',raw:c,W:m3.clean.w,H:m3.clean.h,F:m3.frames,STEP:m3.step,FPS:fps3,B:m3.clean.bounds,ZR:m3.clean.zrange,mode:'loop',loop:lp,zshift:0.46,stride:2,gs:0.75,yoff:0.06,rawLook:false});
-  DS.t3r=makeDS({label:'take 3 · raw viewfinder · loop',raw:r3,W:m3.raw.w,H:m3.raw.h,F:m3.frames,STEP:m3.step,FPS:fps3,B:m3.raw.bounds,ZR:m3.raw.zrange,mode:'loop',loop:lp,zshift:0.46,stride:2,gs:0.7,yoff:0.05,rawLook:true}); }
-const DSORDER=['t3c','t3r','t1']; let HD=DS[q.get('head')||'t3r']||DS.t3r;
-const MHMAX=Math.max(...Object.values(DS).map(d=>d.Mh));
+// dataset SPECS only (a few hundred bytes of json); the big .bin payloads load on demand
+const m3=await (await fetch('data/take3/meta.json')).json();
+const lp3=[Math.round((m3.loop[0]-m3.firstFrame)/m3.step),Math.round((m3.loop[1]-m3.firstFrame)/m3.step)], fps3=m3.srcFps/m3.step;
+const DSDEF={
+  t1:{label:'take 1 · clean · gesture',file:'data/frames.bin',W,H,F,STEP,FPS,B,ZR,mode:'gesture',rest:REST,gesture:[Math.round(GESTURE[0]/STEP),toIdx(GESTURE[1])],zshift:0.42,stride:STRIDE,gs:1,yoff:0,rawLook:false},
+  t3c:{label:'take 3 · clean · loop',file:'data/take3/clean.bin',W:m3.clean.w,H:m3.clean.h,F:m3.frames,STEP:m3.step,FPS:fps3,B:m3.clean.bounds,ZR:m3.clean.zrange,mode:'loop',loop:lp3,zshift:0.46,stride:2,gs:0.75,yoff:0.06,rawLook:false},
+  t3r:{label:'take 3 · raw viewfinder · loop',file:'data/take3/raw.bin',W:m3.raw.w,H:m3.raw.h,F:m3.frames,STEP:m3.step,FPS:fps3,B:m3.raw.bounds,ZR:m3.raw.zrange,mode:'loop',loop:lp3,zshift:0.46,stride:2,gs:0.7,yoff:0.05,rawLook:true}};
+const DS={}, DSPEND={};
+function loadDS(k){ if(DS[k]) return Promise.resolve(DS[k]); if(DSPEND[k]) return DSPEND[k];
+  return DSPEND[k]=fetch(DSDEF[k].file).then(r=>r.arrayBuffer()).then(b=>DS[k]=makeDS({...DSDEF[k],raw:new Uint16Array(b)})); }
+const DSORDER=['t3c','t3r','t1'];
+let HDKEY=DSDEF[q.get('head')]?q.get('head'):'t3r', HD=null;
+const headReady=loadDS(HDKEY);
+// instance-buffer reservation must not depend on which datasets happen to be loaded:
+// use each dataset's static cell-grid upper bound instead of its measured cell count.
+const MHMAX=Math.max(...Object.values(DSDEF).map(d=>Math.floor(d.W/d.stride)*Math.floor(d.H/d.stride)));
 function dep(ds,fi,fj,m,ix,iy){ if(ix<0||iy<0||ix>=ds.W||iy>=ds.H) return 0; const a=ds.raw[fi*ds.W*ds.H+iy*ds.W+ix]/65535, b=ds.raw[fj*ds.W*ds.H+iy*ds.W+ix]/65535; if(a>0&&b>0) return a+(b-a)*m; return Math.max(a,b); }
 
 // ---------- text layout ----------
@@ -188,8 +212,8 @@ async function buildBrochure(){ const items=[]; brochureEl.innerHTML='';
   // nav
   const nav=document.createElement('div'); nav.className='nav';
   [['joeljohnson@gmail.com'],['New York, New York']].forEach(([t,cls])=>{ const sp=document.createElement('span'); if(cls) sp.className=cls; charsInto(sp,t); nav.appendChild(sp); }); brochureEl.appendChild(nav);
-  // headline sized to 85% of the content width
-  const contentW=innerWidth*0.91; const px=Math.min(0.85*contentW/textWidth('Johnson',1,0), innerHeight*0.25);
+  // headline sized to 85% of the content width (full content width when stacked on narrow screens)
+  const NW=narrow(); const contentW=innerWidth*0.91; const px=Math.min((NW?0.995:0.85)*contentW/textWidth('Johnson',1,0), innerHeight*(NW?0.22:0.25));
   const head=document.createElement('div'); head.className='head'; head.style.fontSize=px+'px'; const l1=document.createElement('div'); charsInto(l1,'Joel'); const l2=document.createElement('div'); charsInto(l2,'Johnson'); head.appendChild(l1); head.appendChild(l2); brochureEl.appendChild(head);
   // columns below the headline
   const cols=document.createElement('div'); cols.className='cols'; const hr=head.getBoundingClientRect(); cols.style.top=(hr.bottom+innerHeight*0.035)+'px';
@@ -198,28 +222,50 @@ async function buildBrochure(){ const items=[]; brochureEl.innerHTML='';
   
   const tag=document.createElement('div'); tag.className='tag'; { const p1=document.createElement('p'); charsInto(p1,'I translate technical and customer truths'); p1.appendChild(document.createElement('br')); charsInto(p1,'into narratives that earn trust.'); tag.appendChild(p1); const p2=document.createElement('p'); charsInto(p2,"Let's fall in love with your mission again."); tag.appendChild(p2); } left.appendChild(tag); const arrow=document.createElement('div'); arrow.className='arrow'; charsInto(arrow,'↓'); left.appendChild(arrow);
   const wall=document.createElement('div'); wall.className='wall'; cols.appendChild(left); cols.appendChild(wall); brochureEl.appendChild(cols);
+  // narrow: .cols is block-stacked by CSS, so the wall needs an explicit height under the text
+  if(NW){ const cr=cols.getBoundingClientRect(), lr=left.getBoundingClientRect(); const gap=innerHeight*0.02;
+    wall.style.marginTop=gap+'px'; wall.style.height=Math.max(0,cr.bottom-lr.bottom-gap)+'px'; }
   // --- glyph counterparts (hidden while the page is clean) ---
   handoff=[]; items.push(...measureChars(nav,0,0.9,0,items.length)); items.push(...measureChars(sub,0,0.95,0,items.length)); items.push(...measureChars(tag,1,1,0,items.length)); items.push(...measureChars(arrow,0,1,0,items.length));
   { const em=px*(vh/innerHeight); for(const sp of head.querySelectorAll('span.ch')){ const r=sp.getBoundingClientRect(); const wpt=screenToZ0(r.left+r.width/2,r.top+r.height/2); handoff.push({el:sp,idx:items.length}); items.push({x:wpt.x,y:wpt.y-em*0.055,z:(Math.random()-0.5)*0.004,g:gidx(sp.textContent,2),b:1,s:em/0.82,w:0}); } }
   
   // --- logo wall (always visible), fills the wall placeholder ---
-  { const r=rectToWorld(wall.getBoundingClientRect()); const gapX=0.07*r.w, gapY=0.05*vh; const cols5=4, rows=Math.ceil(BRANDS.length/cols5); const cw=(r.w-(cols5-1)*gapX)/cols5; const ch=Math.min(0.11*vh,(r.h-(rows-1)*gapY)/rows);
+  { const r=rectToWorld(wall.getBoundingClientRect()); const gapX=0.07*r.w, gapY=(NW?0.028:0.05)*vh; const cols5=NW?3:4, rows=Math.ceil(BRANDS.length/cols5); const cw=(r.w-(cols5-1)*gapX)/cols5; const ch=Math.min(0.11*vh,(r.h-(rows-1)*gapY)/rows);
     const bm=await Promise.all(BRANDS.map(b=>maskFor(b,{thicken:2.5}))); const rowsCount=balancedRows(BRANDS.length,cols5); let i=0; let gy=r.top-ch/2;
-    rowsCount.forEach(cnt=>{ let gx=r.left+cw/2; for(let c=0;c<cnt;c++,i++){ const b=BRANDS[i]; items.push(...sampleMask(bm[i],gx,gy,cw*(b.scale||1),ch*(b.scale||1),{target:b.target||520,b:0.85,w:2+0.4*(b.drift??1),glyph:b.glyph||1.7,jitter:0.35}).items); gx+=cw+gapX; } gy-=ch+gapY; }); }
+    rowsCount.forEach(cnt=>{ let gx=r.left+cw/2; for(let c=0;c<cnt;c++,i++){ const b=BRANDS[i], bs=b.scale||1; let gxc=gx;
+      // narrow: keep an over-scaled logo (Ford) inside the wall instead of letting it run off the edge
+      if(NW){ const hw=fitBox(bm[i],cw*bs,ch*bs).w/2; gxc=Math.min(Math.max(gx,r.left+hw),r.left+r.w-hw); }
+      items.push(...sampleMask(bm[i],gxc,gy,cw*bs,ch*bs,{target:b.target||520,b:0.85,w:2+0.4*(b.drift??1),glyph:b.glyph||1.7,jitter:0.35}).items); gx+=cw+gapX; } gy-=ch+gapY; }); }
   return items; }
-async function buildClaim(sc){ const ts=tscale(); const lines=sc.lines.map(l=>({...l,size:l.size*ts})); const caps=sc.caption.map(t=>t?({t,size:0.019*ts,bright:0.6,f:1}):({t:'',size:0.019*ts*0.45,bright:0,f:1}));
+async function buildClaim(sc){ const ts=tscale(); const maxW=vw*0.9;
+  // never let a claim line or its caption run past the viewport: shrink the lines together, wrap the caption
+  let k=1; for(const l of sc.lines){ const w=textWidth(l.t,l.size*ts*FONTS[l.f||0].scale,l.f||0); if(w>maxW) k=Math.min(k,maxW/w); }
+  const lines=sc.lines.map(l=>({...l,size:l.size*ts*k,gap:(l.gap||0)*k}));
+  const capSize=0.019*ts; const caps=[];
+  for(const t of sc.caption){ if(!t){ caps.push({t:'',size:capSize*0.45,bright:0,f:1}); continue; }
+    for(const ln of wrapText(t,capSize*FONTS[1].scale,1,maxW)) caps.push({t:ln,size:capSize,bright:0.6,f:1}); }
   const total=linesHeight(lines)+linesHeight(caps); const a=layoutLines(lines,0,total/2); const c=layoutLines(caps,0,a.bottom-0.01); const items=[...a.items,...c.items];
   if(sc.bg){ const m=await loadMask(sc.bg,null,{thicken:1.5}); items.push(...sampleMask(m,0.02,0.02,0.8*ts,0.48*ts,{target:3600,b:P.bg,z:-0.3,w:3.4,glyph:1.35,jitter:0.15}).items); }
   return items; }
-function buildSkills(sc){ const ts=tscale(); const items=[...textItems(sc.title,0.02*ts,0,0.27*ts,0.6,1)];
-  const cols=vw>0.8?2:1; const size=0.03*ts; const colW=0.42*ts; const rows=Math.ceil(SKILLS.length/cols); const lh=size*1.7; let y0=(rows-1)*lh/2-0.02;
+function buildSkills(sc){ const ts=tscale();
+  const cols=vw>0.8?2:1; let size=0.03*ts;
+  if(cols===1){ const maxW=vw*0.92; let wmax=0; for(const t of SKILLS) wmax=Math.max(wmax,textWidth(t,size,0)); if(wmax>maxW) size*=maxW/wmax; }
+  const colW=0.42*ts; const rows=Math.ceil(SKILLS.length/cols); const lh=size*1.7; let y0=(rows-1)*lh/2-0.02;
+  const tsz=0.02*ts; const items=[...textItems(sc.title,tsz,0,cols===1?(y0+size/2+tsz*2.2):0.27*ts,0.6,1)];
   SKILLS.forEach((t,i)=>{ const col=i%cols, row=Math.floor(i/cols); const cx=cols===2?(col?colW/2:-colW/2):0; items.push(...textItems(t,size,cx,y0-row*lh,0.85,0)); });
   return items; }
-async function buildEditorial(sc){ const ts=tscale(); const items=[...textItems(sc.title,0.02*ts,0,0.29*ts,0.6,1)];
-  const pm=await Promise.all(PUBS.map(b=>maskFor(b,{thicken:1}))); const boxW=0.3*ts, boxH=0.058*ts, colW=0.52*ts, rowH=0.088*ts; const rows=Math.ceil(PUBS.length/2); let y=(rows-1)*rowH/2-0.03;
-  pm.forEach((m,i)=>{ const p=PUBS[i]; const col=i%2, row=Math.floor(i/2); const bw=(p.boxW||0.3)*ts; const x0=(col?colW/2:-colW/2)-boxW/2; const fb=fitBox(m,bw,boxH); const cy=y-row*rowH; const s=sampleMask(m,x0+fb.w/2,cy,bw,boxH,{target:p.target||900,b:0.85,glyph:p.glyph||1.2,jitter:p.fine?0.2:0.3,minGlyph:p.fine?0.0022:0.0045,w:6+0.4*(p.drift??1)}); items.push(...s.items); });
+async function buildEditorial(sc){ const ts=tscale(); const cols=vw>0.8?2:1;
+  const pm=await Promise.all(PUBS.map(b=>maskFor(b,{thicken:1}))); const boxW=0.3*ts, boxH=0.058*ts, colW=0.52*ts, rowH=0.088*ts; const rows=Math.ceil(PUBS.length/cols); let y=(rows-1)*rowH/2-0.03;
+  const tsz=0.02*ts; const items=[...textItems(sc.title,tsz,0,cols===1?(y+boxH/2+tsz*2.4):0.29*ts,0.6,1)];
+  pm.forEach((m,i)=>{ const p=PUBS[i]; const col=i%cols, row=Math.floor(i/cols); const bw=Math.min((p.boxW||0.3)*ts*(cols===1?1.7:1),vw*0.88); const fb=fitBox(m,bw,boxH); const cy=y-row*rowH; const cx=cols===2?((col?colW/2:-colW/2)-boxW/2+fb.w/2):0; const s=sampleMask(m,cx,cy,bw,boxH,{target:p.target||900,b:0.85,glyph:p.glyph||1.2,jitter:p.fine?0.2:0.3,minGlyph:p.fine?0.0022:0.0045,w:6+0.4*(p.drift??1)}); items.push(...s.items); });
   return items; }
-function buildClose(sc){ const ts=tscale(); const a=layoutLines([{t:sc.line,size:0.026*ts,bright:1,gap:0.012,f:1},{t:sc.caption,size:0.015*ts,bright:0.5,f:1}],0,-0.26*ts); return {extras:a.items, off:{x:0,y:0.1}}; }
+function buildClose(sc){ const ts=tscale(); const lsz=0.026*ts, maxW=vw*0.8;
+  const wr=wrapText(sc.line,lsz*FONTS[1].scale,1,maxW);
+  const lines=wr.map((t,i)=>({t,size:lsz,bright:1,gap:i===wr.length-1?0.012:0,f:1}));
+  lines.push({t:sc.caption,size:0.015*ts,bright:0.5,f:1});
+  // wrapped == narrow viewport: sit the block under the head instead of across the chest
+  const topY=wr.length>1?(-vh/2+linesHeight(lines)+0.035):-0.26*ts;
+  const a=layoutLines(lines,0,topY); return {extras:a.items, off:{x:0,y:0.1}}; }
 async function buildScenes(){ const built=[]; let maxM=0;
   for(const sc of SCENES){ let it;
     if(sc.type==='brochure') it=await buildBrochure();
@@ -279,18 +325,19 @@ void main(){
 uniform sampler2D uAtlas,uAtlas2,uAtlas3; uniform float uInvert; varying vec2 vUv; varying float vBright; varying float vFont;
 void main(){ float a=mix(mix(texture2D(uAtlas,vUv).r,texture2D(uAtlas2,vUv).r,step(0.5,vFont)),texture2D(uAtlas3,vUv).r,step(1.5,vFont)); if(a<0.05||vBright<0.004) discard; float b=min(vBright,1.0); gl_FragColor=vec4(mix(vec3(b),vec3(1.0-b),uInvert),a); }`});
 mat.alphaToCoverage=true;
-const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); document.getElementById('gl').appendChild(renderer.domElement);
+const renderer=new THREE.WebGLRenderer({antialias:true}); const PR=()=>Math.min(devicePixelRatio,narrow()?1.5:2); renderer.setPixelRatio(PR()); renderer.setSize(innerWidth,innerHeight); document.getElementById('gl').appendChild(renderer.domElement);
 const scene=new THREE.Scene(); const mesh=new THREE.Mesh(geo,mat); mesh.frustumCulled=false; scene.add(mesh);
 
 // ---------- pairs / head ----------
 let pair=-1; const headState=SCENES.map(()=>({anim:null,restT:0}));
 function fillInto(idx,which){ const sb=scenesBuilt[idx]; const pos=which==='A'?posA:posB, misc=which==='A'?miscA:miscB;
-  if(sb.head){ const hs=headState[idx]; const r0=HD.mode==='loop'?HD.loop[0]:HD.rest; let fi=r0,fj=r0,m=0; if(hs.anim){ fi=hs.anim.fi;fj=hs.anim.fj;m=hs.anim.m; } headFill(fi,fj,m,sb.off,sb.extras)(pos,misc,seed); }
+  if(sb.head&&HD){ const hs=headState[idx]; const r0=HD.mode==='loop'?HD.loop[0]:HD.rest; let fi=r0,fj=r0,m=0; if(hs.anim){ fi=hs.anim.fi;fj=hs.anim.fj;m=hs.anim.m; } headFill(fi,fj,m,sb.off,sb.extras)(pos,misc,seed); }
+  else if(sb.head){ const M=putItems(sb.extras,0,pos,misc); for(let k=M;k<N;k++) swarmHome(k,seed,pos,misc,k); }
   else sb.static(pos,misc,seed);
   (which==='A'?attrPosA:attrPosB).needsUpdate=true; (which==='A'?attrMiscA:attrMiscB).needsUpdate=true; }
 function setPair(k){ pair=k; fillInto(k,'A'); fillInto(Math.min(S-1,k+1),'B'); }
 // close-scene head: gesture starts while forming, then loops with rest beats
-function tickHead(idx,active,dt){ const hs=headState[idx]; if(!scenesBuilt[idx]||!scenesBuilt[idx].head) return false;
+function tickHead(idx,active,dt){ const hs=headState[idx]; if(!HD||!scenesBuilt[idx]||!scenesBuilt[idx].head) return false;
   if(HD.mode==='loop'){ if(!active){ if(hs.anim){hs.anim=null;return true;} return false; } hs.lt=(hs.lt||0)+dt; const len=HD.loop[1]-HD.loop[0]; const f=HD.loop[0]+((hs.lt*HD.FPS)%len); const i=Math.floor(f); hs.anim={fi:i,fj:(i+1>HD.loop[1]?HD.loop[0]:i+1),m:f-i}; return true; }
   if(!active){ if(hs.anim){ hs.anim=null; return true; } hs.restT=0; return false; }
   if(!hs.anim){ hs.restT+=dt; if(hs.restT>(hs.everPlayed?2.6:0.2)){ hs.anim={phase:'play',t:0,fi:HD.rest,fj:HD.rest,m:0}; hs.restT=0; hs.everPlayed=true; } else return false; }
@@ -305,18 +352,24 @@ addEventListener('keydown',e=>{ let rb=false;
   if(e.key==='['){P.pts=Math.max(0.3,P.pts/1.25);rb=true;} if(e.key===']'){P.pts=Math.min(4,P.pts*1.25);rb=true;}
   if(e.key==='-'){P.glyph=Math.max(0.4,P.glyph/1.15);rb=true;} if(e.key==='='||e.key==='+'){P.glyph=Math.min(3,P.glyph*1.15);rb=true;}
   if(e.key===','){P.bg=Math.max(0.05,P.bg/1.2);rb=true;} if(e.key==='.'){P.bg=Math.min(0.8,P.bg*1.2);rb=true;}
-  if(e.key==='g'){P.glitch=P.glitch>0?0:1;} if(e.key==='v'){ const i=DSORDER.indexOf(Object.keys(DS).find(k=>DS[k]===HD)); HD=DS[DSORDER[(i+1)%DSORDER.length]]; for(const h of headState){h.anim=null;h.lt=0;} setPair(pair); } if(e.key==='e'){P.edge=P.edge?0:1; rb=true;} if(e.key==='t'){P.theme=P.theme==='dark'?'light':'dark'; applyTheme();} if(e.key==='d'){const D=[0,0.5,1,2,3]; P.drift=D[(D.indexOf(P.drift)+1)%D.length]; uniforms.uDrift.value=P.drift;} if(e.key==='n'){P.sans=(P.sans+1)%SANSES.length; applySans(); atlas0.dispose(); atlas0=makeAtlas(FONTS[0]); uniforms.uAtlas.value=atlas0; atlasH.dispose(); atlasH=makeHeadAtlas(); uniforms.uAtlas3.value=atlasH; rb=true;} if(e.key==='f'){P.serif=(P.serif+1)%SERIFS.length; applySerif(); atlas1.dispose(); atlas1=makeAtlas(FONTS[1]); uniforms.uAtlas2.value=atlas1; for(const k in masks) if(k.startsWith('text:')) delete masks[k]; rb=true;} if(e.key==='h'){dbg.style.display=dbg.style.display==='block'?'none':'block';}
+  if(e.key==='g'){P.glitch=P.glitch>0?0:1;} if(e.key==='v'){ const nk=DSORDER[(DSORDER.indexOf(HDKEY)+1)%DSORDER.length]; HDKEY=nk; loadDS(nk).then(d=>{ if(HDKEY!==nk) return; HD=d; for(const h of headState){h.anim=null;h.lt=0;} setPair(pair); }); } if(e.key==='e'){P.edge=P.edge?0:1; rb=true;} if(e.key==='t'){P.theme=P.theme==='dark'?'light':'dark'; applyTheme();} if(e.key==='d'){const D=[0,0.5,1,2,3]; P.drift=D[(D.indexOf(P.drift)+1)%D.length]; uniforms.uDrift.value=P.drift;} if(e.key==='n'){P.sans=(P.sans+1)%SANSES.length; applySans(); atlas0.dispose(); atlas0=makeAtlas(FONTS[0]); uniforms.uAtlas.value=atlas0; atlasH.dispose(); atlasH=makeHeadAtlas(); uniforms.uAtlas3.value=atlasH; rb=true;} if(e.key==='f'){P.serif=(P.serif+1)%SERIFS.length; applySerif(); atlas1.dispose(); atlas1=makeAtlas(FONTS[1]); uniforms.uAtlas2.value=atlas1; for(const k in masks) if(k.startsWith('text:')) delete masks[k]; rb=true;} if(e.key==='h'){dbg.style.display=dbg.style.display==='block'?'none':'block';}
   if(rb) rebuild(); });
 
 // ---------- scroll / loop ----------
 let ovl=q.get('nofade')?0:1; let pTarget=+(q.get('pd')||0), pcur=pTarget, last=performance.now()/1000, fadeT=q.get('nofade')?1:0; if(q.get('nofade')) uniforms.uDust.value=1;
 function scrollToScene(){ const p=scrollY/innerHeight; let k=0; while(k<S-1&&p>=OFFS[k+1]) k++; return THREE.MathUtils.clamp(k+(p-OFFS[k])/SECS[k],0,S-1); }
 addEventListener('scroll',()=>{ pTarget=scrollToScene(); document.getElementById('hint').style.opacity=scrollY>40?0:1; },{passive:true});
-let resizeT=null; addEventListener('resize',()=>{ clearTimeout(resizeT); resizeT=setTimeout(async()=>{ renderer.setSize(innerWidth,innerHeight); vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ; vw=vh*innerWidth/innerHeight; restCamera(); await rebuild(); },150); });
+let resizeT=null, lastW=innerWidth, lastH=innerHeight;
+addEventListener('resize',()=>{ setVH(); renderer.setPixelRatio(PR()); renderer.setSize(innerWidth,innerHeight);
+  vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ; vw=vh*innerWidth/innerHeight; restCamera();
+  const dw=Math.abs(innerWidth-lastW), dh=Math.abs(innerHeight-lastH); lastW=innerWidth; lastH=innerHeight;
+  if(dw===0&&dh<=140) return;   // iOS address-bar show/hide: resizing the canvas is enough, skip the full rebuild
+  clearTimeout(resizeT); resizeT=setTimeout(()=>rebuild(),200); });
 const mouse=new THREE.Vector2(); addEventListener('pointermove',e=>mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight*2-1)));
 let yaw=0, glitchEnv=0, nextBurst=2;
 function applyTheme(){ const light=P.theme==='light'; const r=document.documentElement.style; r.setProperty('--fg',light?'#000':'#fff'); r.setProperty('--bg',light?'#fff':'#000'); uniforms.uInvert.value=light?1:0; document.body.style.background=light?'#fff':'#000'; renderer.setClearColor(light?0xffffff:0x000000); dbg.style.color=light?'#555':'#9a9a9a'; dbg.style.background=light?'rgba(255,255,255,.7)':'rgba(0,0,0,.55)'; document.getElementById('hint').style.color=light?'#999':'#444'; }
 applyTheme(); uniforms.uDrift.value=P.drift; setPair(Math.min(S-2,Math.floor(pcur)));
+headReady.then(d=>{ HD=d; for(const h of headState){h.anim=null;h.lt=0;} setPair(pair); });
 function loop(){ const now=performance.now()/1000, dt=Math.min(0.05,Math.max(1/120,now-last)); last=now; uniforms.uTime.value=now;
   const clean=pTarget<0.004 && pcur<0.004 && !q.get('nofade'); uniforms.uFade.value=1;
   uniforms.uDust.value+=((clean?0:1)-uniforms.uDust.value)*(1-Math.pow(0.05,dt));
@@ -338,7 +391,7 @@ function loop(){ const now=performance.now()/1000, dt=Math.min(0.05,Math.max(1/1
   const tgt=TGT, R=CAMZ-tgt.z;
   camera.position.set(tgt.x+R*Math.sin(yaw)+mouse.x*0.02*headness, tgt.y+mouse.y*0.015*headness, tgt.z+R*Math.cos(yaw)); camera.lookAt(tgt);
   renderer.render(scene,camera);
-  dbg.textContent=`SETTINGS  (h hides)\n[ ]  logo points   ×${P.pts.toFixed(2)}\n- =  glyph size    ×${P.glyph.toFixed(2)}\n, .  bg logo       ${P.bg.toFixed(2)}\ng    glitch        ${P.glitch?'on':'off'}\nv    head          ${HD.label}\ne    edge sampling ${P.edge?'on':'off'}\nt    theme         ${P.theme}\nd    logo drift    ×${P.drift}\nf    secondary     ${SERIFS[P.serif].name}\nn    primary       ${SANSES[P.sans].name}\n\nscene ${k}  local ${local.toFixed(2)}  t ${t.toFixed(2)}`;
+  dbg.textContent=`SETTINGS  (h hides)\n[ ]  logo points   ×${P.pts.toFixed(2)}\n- =  glyph size    ×${P.glyph.toFixed(2)}\n, .  bg logo       ${P.bg.toFixed(2)}\ng    glitch        ${P.glitch?'on':'off'}\nv    head          ${HD?HD.label:'loading '+HDKEY+'…'}\ne    edge sampling ${P.edge?'on':'off'}\nt    theme         ${P.theme}\nd    logo drift    ×${P.drift}\nf    secondary     ${SERIFS[P.serif].name}\nn    primary       ${SANSES[P.sans].name}\n\nscene ${k}  local ${local.toFixed(2)}  t ${t.toFixed(2)}`;
   requestAnimationFrame(loop); }
 loop();
 </script></body></html>

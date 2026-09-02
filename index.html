@@ -33,6 +33,7 @@ body{font:14px/1.5 Inter,"Helvetica Neue",Helvetica,Arial,sans-serif}
 .serif{font-family:var(--serif);font-weight:var(--serifw);font-style:var(--serifs);font-variant-ligatures:common-ligatures}
 /* --- narrow screens: single-column brochure --- */
 @media (max-width:699px){
+html{scroll-snap-type:none}
  #brochure .nav{font-size:12px;gap:1.1em}
  #brochure .cols{display:block;bottom:calc(var(--vh)*10)}
  #brochure .left{width:100%}
@@ -51,12 +52,13 @@ body{font:14px/1.5 Inter,"Helvetica Neue",Helvetica,Arial,sans-serif}
 <div id="sections"></div>
 <script type="module">
 import * as THREE from 'three';
+let LH=innerHeight;   // layout height, frozen across small (toolbar) height changes so HTML and glyphs never drift apart
 const SANSES=[{name:'Inter 4.1 SemiBold 600',fam:"'InterV',Inter,sans-serif",w:600}];
 const SERIFS=[{name:'Inter 4.1 Thin 100',fam:"'InterV',Inter,sans-serif",w:100,scale:1.0}];
 await Promise.all([document.fonts.load("100 64px 'InterV'"),document.fonts.load("600 64px 'InterV'"),document.fonts.load("900 64px 'InterV'"),...SANSES.map(f=>document.fonts.load(`${f.w} 64px ${f.fam}`)),...SERIFS.map(f=>document.fonts.load(`${f.italic?'italic ':''}${f.w} 64px ${f.fam}`))]); await document.fonts.ready;
 const q=new URLSearchParams(location.search);
-// viewport unit that tracks the *visible* height (iOS toolbars change innerHeight but not 1vh)
-const setVH=()=>document.documentElement.style.setProperty('--vh',(innerHeight/100)+'px'); setVH();
+// viewport unit that tracks the *visible* height (iOS toolbars change LH but not 1vh)
+const setVH=()=>document.documentElement.style.setProperty('--vh',(LH/100)+'px'); setVH();
 const narrow=()=>innerWidth<700;
 const meta=await (await fetch('data/meta.json')).json();
 const W=meta.w,H=meta.h,F=meta.frames,STEP=meta.step,FPS=meta.srcFps/STEP;
@@ -87,7 +89,7 @@ document.getElementById('sections').innerHTML=SCENES.map((_,i)=>`<div class="sec
 // ---------- glyph atlases (0 = Inter 600, 1 = Newsreader 400) ----------
 const G=16,CELL=112;
 const FONTS=[{fam:'',w:600,cls:'sans',scale:1},{fam:'',w:400,cls:'serif',scale:1,italic:false}];
-function applySerif(){ const f=SERIFS[P.serif]; FONTS[1].fam=f.fam; FONTS[1].w=f.w; FONTS[1].scale=f.scale; FONTS[1].italic=!!f.italic; const r=document.documentElement.style; r.setProperty('--serif',f.fam); r.setProperty('--serifw',f.w); r.setProperty('--serifs',f.italic?'italic':'normal'); }
+function applySerif(){ const f=SERIFS[P.serif]; const w=narrow()?Math.max(f.w,400):f.w; FONTS[1].fam=f.fam; FONTS[1].w=w; FONTS[1].scale=f.scale; FONTS[1].italic=!!f.italic; const r=document.documentElement.style; r.setProperty('--serif',f.fam); r.setProperty('--serifw',w); r.setProperty('--serifs',f.italic?'italic':'normal'); }
 function applySans(){ const f=SANSES[P.sans]; FONTS[0].fam=f.fam; FONTS[0].w=f.w; const r=document.documentElement.style; r.setProperty('--sans',f.fam); r.setProperty('--sansw',f.w); }
 applySerif(); applySans();
 const POOL='JOELJOHNSONABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789&?!@#%*+-/=<>{}[]();:.,';
@@ -108,12 +110,12 @@ function wrapText(t,size,f,maxW){ if(textWidth(t,size,f)<=maxW) return [t]; cons
   for(const w of t.split(' ')){ const cand=cur?cur+' '+w:w; if(cur&&textWidth(cand,size,f)>maxW){ out.push(cur); cur=w; } else cur=cand; } if(cur) out.push(cur); return out; }
 
 // ---------- world / camera ----------
-let vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ, vw=vh*innerWidth/innerHeight;
+let vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ, vw=vh*innerWidth/LH;
 const TGT=new THREE.Vector3(0,-0.02,0.05);
-const camera=new THREE.PerspectiveCamera(FOV,innerWidth/innerHeight,0.05,20);
-function restCamera(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); camera.position.set(TGT.x,TGT.y,TGT.z+(CAMZ-TGT.z)); camera.lookAt(TGT); camera.updateMatrixWorld(); }
+const camera=new THREE.PerspectiveCamera(FOV,innerWidth/LH,0.05,20);
+function restCamera(){ camera.aspect=innerWidth/LH; camera.updateProjectionMatrix(); camera.position.set(TGT.x,TGT.y,TGT.z+(CAMZ-TGT.z)); camera.lookAt(TGT); camera.updateMatrixWorld(); }
 restCamera();
-function screenToZ0(cx,cy){ const nd=new THREE.Vector3(cx/innerWidth*2-1,-(cy/innerHeight*2-1),0.5).unproject(camera); const dir=nd.sub(camera.position).normalize(); const t=-camera.position.z/dir.z; return camera.position.clone().add(dir.multiplyScalar(t)); }
+function screenToZ0(cx,cy){ const nd=new THREE.Vector3(cx/innerWidth*2-1,-(cy/LH*2-1),0.5).unproject(camera); const dir=nd.sub(camera.position).normalize(); const t=-camera.position.z/dir.z; return camera.position.clone().add(dir.multiplyScalar(t)); }
 const tscale=()=>THREE.MathUtils.clamp(vw/1.05,0.55,1);
 
 // ---------- masks ----------
@@ -188,7 +190,7 @@ function rectMask(w,h){ const key='rect:'+w+'x'+h; if(masks[key]) return masks[k
 function textLeft(t,size,x,y,bright,f=0,w=0){ const items=[]; let cx=x; for(const ch of t){ const a=advance(ch,size,f); if(ch!==' ') items.push({x:cx+a/2,y,z:(Math.random()-0.5)*0.004,g:gidx(ch,f),b:bright,s:size/0.82,w}); cx+=a; } return items; }
 function textRight(t,size,xr,y,bright,f=0,w=0){ return textLeft(t,size,xr-textWidth(t,size,f),y,bright,f,w); }
 function spanify(el,text){ for(const ch of text){ const sp=document.createElement('span'); sp.textContent=ch; sp.style.marginLeft='0'; el.appendChild(sp); } }
-function measureChars(el,f,bright,w=0,base=0){ const items=[]; for(const sp of el.querySelectorAll('span.ch')){ if(sp.textContent===' ') continue; handoff.push({el:sp,idx:base+items.length}); const r=sp.getBoundingClientRect(); const wpt=screenToZ0(r.left+r.width/2,r.top+r.height/2); const size=parseFloat(getComputedStyle(sp).fontSize)*(vh/innerHeight); items.push({x:wpt.x,y:wpt.y-size*0.055,z:(Math.random()-0.5)*0.004,g:gidx(sp.textContent,f),b:bright,s:size/0.82,w}); } return items; }
+function measureChars(el,f,bright,w=0,base=0){ const items=[]; for(const sp of el.querySelectorAll('span.ch')){ if(sp.textContent===' ') continue; handoff.push({el:sp,idx:base+items.length}); const r=sp.getBoundingClientRect(); const wpt=screenToZ0(r.left+r.width/2,r.top+r.height/2); const size=parseFloat(getComputedStyle(sp).fontSize)*(vh/LH); items.push({x:wpt.x,y:wpt.y-size*0.055,z:(Math.random()-0.5)*0.004,g:gidx(sp.textContent,f),b:bright,s:size/0.82,w}); } return items; }
 function charsInto(el,text,cls='ch'){ for(const ch of text){ const sp=document.createElement('span'); sp.className=cls; sp.textContent=ch; el.appendChild(sp); } }
 function rectToWorld(r){ const a=screenToZ0(r.left,r.top), b=screenToZ0(r.right,r.bottom); return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,w:b.x-a.x,h:a.y-b.y,left:a.x,top:a.y}; }
 async function buildBrochure(){ const items=[]; brochureEl.innerHTML='';
@@ -196,21 +198,21 @@ async function buildBrochure(){ const items=[]; brochureEl.innerHTML='';
   const nav=document.createElement('div'); nav.className='nav';
   [['joeljohnson@gmail.com'],['New York, New York']].forEach(([t,cls])=>{ const sp=document.createElement('span'); if(cls) sp.className=cls; charsInto(sp,t); nav.appendChild(sp); }); brochureEl.appendChild(nav);
   // headline sized to 85% of the content width (full content width when stacked on narrow screens)
-  const NW=narrow(); const contentW=innerWidth*0.91; const px=Math.min((NW?0.995:0.85)*contentW/textWidth('Johnson',1,0), innerHeight*(NW?0.22:0.25));
+  const NW=narrow(); const contentW=innerWidth*0.91; const px=Math.min((NW?0.995:0.85)*contentW/textWidth('Johnson',1,0), LH*(NW?0.22:0.25));
   const head=document.createElement('div'); head.className='head'; head.style.fontSize=px+'px'; const l1=document.createElement('div'); charsInto(l1,'Joel'); const l2=document.createElement('div'); charsInto(l2,'Johnson'); head.appendChild(l1); head.appendChild(l2); brochureEl.appendChild(head);
   // columns below the headline
-  const cols=document.createElement('div'); cols.className='cols'; const hr=head.getBoundingClientRect(); cols.style.top=(hr.bottom+innerHeight*0.035)+'px';
+  const cols=document.createElement('div'); cols.className='cols'; const hr=head.getBoundingClientRect(); cols.style.top=(hr.bottom+LH*0.035)+'px';
   const left=document.createElement('div'); left.className='left';
   const sub=document.createElement('div'); sub.className='sub'; charsInto(sub,'Narrative Strategy'); sub.appendChild(document.createElement('br')); charsInto(sub,'& Execution'); left.appendChild(sub);
   
   const tag=document.createElement('div'); tag.className='tag'; { const p1=document.createElement('p'); charsInto(p1,'I translate technical and customer truths'); p1.appendChild(document.createElement('br')); charsInto(p1,'into narratives that earn trust.'); tag.appendChild(p1); const p2=document.createElement('p'); charsInto(p2,"Let's fall in love with your mission again."); tag.appendChild(p2); } left.appendChild(tag); const arrow=document.createElement('div'); arrow.className='arrow'; charsInto(arrow,'↓'); left.appendChild(arrow);
   const wall=document.createElement('div'); wall.className='wall'; cols.appendChild(left); cols.appendChild(wall); brochureEl.appendChild(cols);
   // narrow: .cols is block-stacked by CSS, so the wall needs an explicit height under the text
-  if(NW){ const cr=cols.getBoundingClientRect(), lr=left.getBoundingClientRect(); const gap=innerHeight*0.02;
+  if(NW){ const cr=cols.getBoundingClientRect(), lr=left.getBoundingClientRect(); const gap=LH*0.02;
     wall.style.marginTop=gap+'px'; wall.style.height=Math.max(0,cr.bottom-lr.bottom-gap)+'px'; }
   // --- glyph counterparts (hidden while the page is clean) ---
   handoff=[]; items.push(...measureChars(nav,0,0.9,0,items.length)); items.push(...measureChars(sub,0,0.95,0,items.length)); items.push(...measureChars(tag,1,1,0,items.length)); items.push(...measureChars(arrow,0,1,0,items.length));
-  { const em=px*(vh/innerHeight); for(const sp of head.querySelectorAll('span.ch')){ const r=sp.getBoundingClientRect(); const wpt=screenToZ0(r.left+r.width/2,r.top+r.height/2); handoff.push({el:sp,idx:items.length}); items.push({x:wpt.x,y:wpt.y-em*0.055,z:(Math.random()-0.5)*0.004,g:gidx(sp.textContent,2),b:1,s:em/0.82,w:0}); } }
+  { const em=px*(vh/LH); for(const sp of head.querySelectorAll('span.ch')){ const r=sp.getBoundingClientRect(); const wpt=screenToZ0(r.left+r.width/2,r.top+r.height/2); handoff.push({el:sp,idx:items.length}); items.push({x:wpt.x,y:wpt.y-em*0.055,z:(Math.random()-0.5)*0.004,g:gidx(sp.textContent,2),b:1,s:em/0.82,w:0}); } }
   
   // --- logo wall (always visible), fills the wall placeholder ---
   { const r=rectToWorld(wall.getBoundingClientRect()); const gapX=0.07*r.w, gapY=(NW?0.028:0.05)*vh; const cols5=NW?3:4, rows=Math.ceil(BRANDS.length/cols5); const cw=(r.w-(cols5-1)*gapX)/cols5; const ch=Math.min(0.11*vh,(r.h-(rows-1)*gapY)/rows);
@@ -224,9 +226,9 @@ async function buildClaim(sc){ const ts=tscale(); const maxW=vw*0.9;
   // never let a claim line or its caption run past the viewport: shrink the lines together, wrap the caption
   let k=1; for(const l of sc.lines){ const w=textWidth(l.t,l.size*ts*FONTS[l.f||0].scale,l.f||0); if(w>maxW) k=Math.min(k,maxW/w); }
   const lines=sc.lines.map(l=>({...l,size:l.size*ts*k,gap:(l.gap||0)*k}));
-  const capSize=0.019*ts; const caps=[];
+  const NWc=narrow(); const capSize=(NWc?0.031:0.019)*ts; const caps=[];
   for(const t of sc.caption){ if(!t){ caps.push({t:'',size:capSize*0.45,bright:0,f:1}); continue; }
-    for(const ln of wrapText(t,capSize*FONTS[1].scale,1,maxW)) caps.push({t:ln,size:capSize,bright:0.6,f:1}); }
+    for(const ln of wrapText(t,capSize*FONTS[1].scale,1,maxW)) caps.push({t:ln,size:capSize,bright:NWc?0.85:0.6,f:1}); }
   const total=linesHeight(lines)+linesHeight(caps); const a=layoutLines(lines,0,total/2); const c=layoutLines(caps,0,a.bottom-0.01); const items=[...a.items,...c.items];
   if(sc.bg){ const m=await loadMask(sc.bg,null,{thicken:1.5}); items.push(...sampleMask(m,0.02,0.02,0.8*ts,0.48*ts,{target:3600,b:P.bg,z:-0.3,w:3.4,glyph:1.35,jitter:0.15}).items); }
   return items; }
@@ -242,10 +244,10 @@ async function buildEditorial(sc){ const ts=tscale(); const cols=vw>0.8?2:1;
   const tsz=0.02*ts; const items=[...textItems(sc.title,tsz,0,cols===1?(y+boxH/2+tsz*2.4):0.29*ts,0.6,1)];
   pm.forEach((m,i)=>{ const p=PUBS[i]; const col=i%cols, row=Math.floor(i/cols); const bw=Math.min((p.boxW||0.3)*ts*(cols===1?1.7:1),vw*0.88); const fb=fitBox(m,bw,boxH); const cy=y-row*rowH; const cx=cols===2?((col?colW/2:-colW/2)-boxW/2+fb.w/2):0; const s=sampleMask(m,cx,cy,bw,boxH,{target:p.target||900,b:0.85,glyph:p.glyph||1.2,jitter:p.fine?0.2:0.3,minGlyph:p.fine?0.0022:0.0045,w:6+0.4*(p.drift??1)}); items.push(...s.items); });
   return items; }
-function buildClose(sc){ const ts=tscale(); const lsz=0.026*ts, maxW=vw*0.8;
+function buildClose(sc){ const ts=tscale(); const NWc=narrow(); const lsz=(NWc?0.04:0.026)*ts, maxW=vw*0.8;
   const wr=wrapText(sc.line,lsz*FONTS[1].scale,1,maxW);
   const lines=wr.map((t,i)=>({t,size:lsz,bright:1,gap:i===wr.length-1?0.012:0,f:1}));
-  lines.push({t:sc.caption,size:0.015*ts,bright:0.5,f:1});
+  lines.push({t:sc.caption,size:(NWc?0.024:0.015)*ts,bright:NWc?0.8:0.5,f:1});
   // wrapped == narrow viewport: sit the block under the head instead of across the chest
   const topY=wr.length>1?(-vh/2+linesHeight(lines)+0.035):-0.26*ts;
   const a=layoutLines(lines,0,topY); return {extras:a.items, off:{x:0,y:0.1}}; }
@@ -308,7 +310,7 @@ void main(){
 uniform sampler2D uAtlas,uAtlas2,uAtlas3; uniform float uInvert; varying vec2 vUv; varying float vBright; varying float vFont;
 void main(){ float a=mix(mix(texture2D(uAtlas,vUv).r,texture2D(uAtlas2,vUv).r,step(0.5,vFont)),texture2D(uAtlas3,vUv).r,step(1.5,vFont)); if(a<0.05||vBright<0.004) discard; float b=min(vBright,1.0); gl_FragColor=vec4(mix(vec3(b),vec3(1.0-b),uInvert),a); }`});
 mat.alphaToCoverage=true;
-const renderer=new THREE.WebGLRenderer({antialias:true}); const PR=()=>Math.min(devicePixelRatio,narrow()?1.5:2); renderer.setPixelRatio(PR()); renderer.setSize(innerWidth,innerHeight); document.getElementById('gl').appendChild(renderer.domElement);
+const renderer=new THREE.WebGLRenderer({antialias:true}); const PR=()=>Math.min(devicePixelRatio,narrow()?1.5:2); renderer.setPixelRatio(PR()); renderer.setSize(innerWidth,LH); document.getElementById('gl').appendChild(renderer.domElement);
 const scene=new THREE.Scene(); const mesh=new THREE.Mesh(geo,mat); mesh.frustumCulled=false; scene.add(mesh);
 
 // ---------- pairs / head ----------
@@ -340,15 +342,15 @@ addEventListener('keydown',e=>{ let rb=false;
 
 // ---------- scroll / loop ----------
 let ovl=q.get('nofade')?0:1; let pTarget=+(q.get('pd')||0), pcur=pTarget, last=performance.now()/1000, fadeT=q.get('nofade')?1:0; if(q.get('nofade')) uniforms.uDust.value=1;
-function scrollToScene(){ const p=scrollY/innerHeight; let k=0; while(k<S-1&&p>=OFFS[k+1]) k++; return THREE.MathUtils.clamp(k+(p-OFFS[k])/SECS[k],0,S-1); }
+function scrollToScene(){ const p=scrollY/LH; let k=0; while(k<S-1&&p>=OFFS[k+1]) k++; return THREE.MathUtils.clamp(k+(p-OFFS[k])/SECS[k],0,S-1); }
 addEventListener('scroll',()=>{ pTarget=scrollToScene(); document.getElementById('hint').style.opacity=scrollY>40?0:1; },{passive:true});
-let resizeT=null, lastW=innerWidth, lastH=innerHeight;
-addEventListener('resize',()=>{ setVH(); renderer.setPixelRatio(PR()); renderer.setSize(innerWidth,innerHeight);
-  vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ; vw=vh*innerWidth/innerHeight; restCamera();
-  const dw=Math.abs(innerWidth-lastW), dh=Math.abs(innerHeight-lastH); lastW=innerWidth; lastH=innerHeight;
-  if(dw===0&&dh<=140) return;   // iOS address-bar show/hide: resizing the canvas is enough, skip the full rebuild
+let resizeT=null, lastW=innerWidth, lastH=LH;
+addEventListener('resize',()=>{ const dw=Math.abs(innerWidth-lastW), dh=Math.abs(innerHeight-LH);
+  if(dw===0&&dh<=140) return;   // iOS address-bar show/hide: keep the frozen layout; nothing moves
+  LH=innerHeight; lastW=innerWidth; lastH=LH; setVH(); renderer.setPixelRatio(PR()); renderer.setSize(innerWidth,LH);
+  vh=2*Math.tan(THREE.MathUtils.degToRad(FOV/2))*CAMZ; vw=vh*innerWidth/LH; restCamera();
   clearTimeout(resizeT); resizeT=setTimeout(()=>rebuild(),200); });
-const mouse=new THREE.Vector2(); addEventListener('pointermove',e=>mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight*2-1)));
+const mouse=new THREE.Vector2(); addEventListener('pointermove',e=>mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/LH*2-1)));
 let yaw=0, glitchEnv=0, nextBurst=2;
 function applyTheme(){ const light=P.theme==='light'; const r=document.documentElement.style; r.setProperty('--fg',light?'#000':'#fff'); r.setProperty('--bg',light?'#fff':'#000'); uniforms.uInvert.value=light?1:0; document.body.style.background=light?'#fff':'#000'; renderer.setClearColor(light?0xffffff:0x000000); dbg.style.color=light?'#555':'#9a9a9a'; dbg.style.background=light?'rgba(255,255,255,.7)':'rgba(0,0,0,.55)'; document.getElementById('hint').style.color=light?'#999':'#444'; }
 applyTheme(); uniforms.uDrift.value=P.drift; setPair(Math.min(S-2,Math.floor(pcur)));

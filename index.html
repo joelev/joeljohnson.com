@@ -16,32 +16,34 @@ html,body{margin:0;background:#000;color:#777}
 body{font:14px/1.5 'InterV',Inter,sans-serif}
 #gl{position:fixed;inset:0;z-index:0}#gl canvas{display:block}
 .sec{scroll-snap-align:start;position:relative;z-index:1;pointer-events:none}
-#hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);color:#444;font-size:12px;letter-spacing:.2em;text-transform:uppercase;transition:opacity .6s;z-index:2;pointer-events:none}
 #brochure{font-variant-ligatures:none;position:fixed;left:0;top:0;right:0;height:calc(var(--vh)*100);z-index:1;pointer-events:none;white-space:nowrap;font-family:'InterV',Inter,sans-serif;color:var(--fg)}
 #brochure .nav{position:absolute;right:4.5vw;top:2.4vh;font-size:14px;font-weight:400;display:flex;gap:2em;align-items:center}
-#brochure .head{position:absolute;left:4.5vw;top:calc(var(--vh)*11);font-weight:600;line-height:.92;letter-spacing:0}
+#brochure .head{position:absolute;left:4.5vw;top:calc(var(--vh)*8);font-weight:600;line-height:.92;letter-spacing:0}
 #brochure .cols{position:absolute;left:4.5vw;right:4.5vw;display:flex;align-items:flex-start}
-#brochure .left{width:22%;flex:none}
-#brochure .sub{font-size:2.2vh;font-weight:400;line-height:1.3}
-#brochure .tag{margin-top:2.6vh;font-size:1.5vh;font-weight:var(--serifw);line-height:1.5}
+#brochure .left{width:calc(25% - 1.2vw);flex:none}
+#brochure .sub{font-size:max(2.2vh,15px);font-weight:400;line-height:1.3}
+#brochure .tag{margin-top:2.6vh;font-size:max(1.5vh,12px);font-weight:var(--serifw);line-height:1.5}
 #brochure .tag p{margin:0 0 1.2vh 0}
-#brochure .arrow{margin-top:2.2vh;font-size:3.2vh;font-weight:300;line-height:1}
-#brochure .wall{flex:1;margin-left:5%;align-self:stretch}
+#brochure .arrow{margin-top:2.2vh;font-size:max(3.2vh,20px);font-weight:300;line-height:1}
+#brochure .wall{flex:1;margin-left:1.6%;align-self:stretch}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (prefers-reduced-motion:reduce){ .sr{position:static;width:auto;height:auto;clip:auto;white-space:normal;max-width:38em;margin:12vh auto;padding:0 6vw;color:#ddd;font-weight:300;line-height:1.6} .sr h1{font-weight:600;font-size:2.4em} .sr a{color:#fff} }
 #dbg{position:fixed;left:14px;top:12px;color:#9a9a9a;background:rgba(0,0,0,.55);padding:8px 10px;border-radius:4px;font:13px/1.7 ui-monospace,Menlo,monospace;z-index:3;white-space:pre;display:none}
-@media (prefers-reduced-motion:reduce){ #gl,#hint{display:none} #brochure{opacity:1!important} #sections{display:none} }
+@media (prefers-reduced-motion:reduce){ #gl{display:none} #brochure{opacity:1!important} #sections{display:none} }
+@media (min-width:700px) and (max-height:520px){ #brochure .left{width:calc(34% - 1.2vw)} #brochure .head{top:calc(var(--vh)*6)} #brochure .tag{margin-top:1.6vh} #brochure .tag p{margin-bottom:.8vh} #brochure .arrow{margin-top:1.4vh} }
 @media (max-width:699px){
 html{scroll-snap-type:none}
 #brochure .nav{font-size:13px}
 #brochure .cols{display:block}
 #brochure .left{width:100%}
-#brochure .sub{font-size:3.2vh}
-#brochure .tag{font-size:2.6vh;font-weight:100}
-#brochure .arrow{font-size:3.6vh}
+#brochure .head{top:calc(var(--vh)*7)}
+#brochure .sub{font-size:2.9vh}
+#brochure .tag{margin-top:1.8vh;font-size:2.3vh;font-weight:100}
+#brochure .tag p{margin-bottom:.8vh}
+#brochure .arrow{margin-top:1.4vh;font-size:3.2vh}
 #brochure .wall{margin-left:0;display:block}
 }
-</style>  <script type="module" crossorigin src="/assets/index-Dl1XOwDj.js"></script>
+</style>  <script type="module" crossorigin src="/assets/index-BrfocVY6.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/three-DkLgujwK.js">
 </head><body>
 <div id="gl" aria-hidden="true"></div>
@@ -53,5 +55,5 @@ html{scroll-snap-type:none}
 <h2>What I do</h2><p>I've learned by doing, alongside great teams and kind computers.</p><ul><li>Narrative strategy</li><li>Editorial leadership</li><li>Executive communications</li><li>Corporate vision frameworks</li><li>Brand identity direction</li><li>Launch &amp; go-to-market</li><li>Integrated campaigns</li><li>Audience growth &amp; analytics</li><li>Crisis &amp; community comms</li><li>Documentary &amp; video</li><li>AI workflow &amp; systems</li><li>AI-search measurement</li></ul>
 <h2>Editorial leadership &amp; journalism</h2><p>WIRED, Wirecutter, Gizmodo, Lifehacker, Popular Mechanics, GQ, American Photo, Road &amp; Track, Jalopnik, The Autopian.</p>
 <p>Let's find your signal and go make some noise.</p>
-</main><div id="brochure"></div><div id="hint">scroll</div><div id="dbg"></div><div id="sections"></div>
+</main><div id="brochure"></div><div id="dbg"></div><div id="sections"></div>
 </body></html>

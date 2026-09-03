@@ -358,5 +358,20 @@
 "scale": 1,
 "wide": false,
 "file": "ibm@bg.bin"
+},
+"zerozerozero": {
+"n": 2934,
+"aspect": 3.047923322683706,
+"step_px": 6.514732106337464,
+"gpx": 5.211785685069971,
+"bbox_px": [
+954,
+313
+],
+"usage": "hint",
+"minGlyph": 0.0045,
+"scale": 1,
+"wide": false,
+"file": "zerozerozero.bin"
 }
 }

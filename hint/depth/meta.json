@@ -1,1 +1,0 @@
-{"w": 300, "h": 286, "frames": 848, "fps": 60, "bounds": [-0.55, 0.55, -0.5, 0.55], "near": [-0.66, -0.2], "far": [-1.6, -0.66], "zrange": [-1.6, -0.15], "stride": 2, "cells": "cells.bin", "video": "loop.mp4", "code": {"absent": 16, "lo": 48, "hi": 235, "thresh": 32}}

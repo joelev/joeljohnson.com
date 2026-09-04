@@ -373,5 +373,20 @@
 "scale": 1,
 "wide": false,
 "file": "zerozerozero.bin"
+},
+"ibmz": {
+"n": 5562,
+"aspect": 0.297,
+"step_px": 5.086362171471161,
+"gpx": 4.069089737176929,
+"bbox_px": [
+297,
+1000
+],
+"usage": "hint",
+"minGlyph": 0.0045,
+"scale": 1,
+"wide": false,
+"file": "ibmz.bin"
 }
 }

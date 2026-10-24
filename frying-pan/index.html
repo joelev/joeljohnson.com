@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Draft for review · Frying Pan Tower</title>
+<link rel="icon" href="/favicon.ico">
+<style>
+@font-face { font-family: "Mattone"; src: url("fonts/Mattone-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Mattone"; src: url("fonts/Mattone-Bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+:root {
+  color-scheme: light;
+  --ink: #141213;
+  --muted: #5d595a;
+  --paper: #fffffd;
+  --panel: #f3f0e8;
+  --rule: #d9d4c7;
+  --tk: #ffe27a;
+  --accent: #0a5c7a;
+  --head: "Mattone", "Helvetica Neue", Arial, sans-serif;
+  --body: "neue-haas-grotesk-text", "Neue Haas Grotesk Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --col: 680px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 18px/1.6 var(--body); letter-spacing: .01em; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.wrap { padding: 0 16px; }
+.col { max-width: var(--col); margin: 0 auto; }
+
+/* Draft banner and reviewer panel */
+.draftbar { background: var(--ink); color: #fff; text-align: center; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; padding: 9px 16px; }
+.review { max-width: var(--col); margin: 40px auto 0; background: var(--panel); border-radius: 18px; padding: 28px 28px 22px; }
+.review h2 { font: 400 22px/1.25 var(--head); margin: 0 0 12px; }
+.review h3 { font: 700 15px/1.3 var(--body); letter-spacing: .06em; text-transform: uppercase; margin: 22px 0 6px; }
+.review p, .review li { font-size: 16px; line-height: 1.55; }
+.review ol, .review ul { padding-left: 1.2em; margin: 8px 0; }
+.review li { margin: 6px 0; }
+.review .sign { color: var(--muted); font-size: 15px; margin-top: 18px; }
+
+/* Title block, after the XPEL blog's article layout */
+header.article { text-align: center; padding: 56px 0 28px; }
+.crumbs { font-size: 14px; letter-spacing: .02em; color: var(--ink); margin-bottom: 18px; }
+.crumbs span { margin: 0 8px; }
+h1 { font: 400 clamp(28px, 4.6vw, 44px)/1.15 var(--head); margin: 0 auto 14px; max-width: 900px; }
+.dek { font-size: 19px; color: var(--muted); max-width: 640px; margin: 0 auto 14px; }
+.meta { font-size: 15px; color: var(--muted); }
+.wt { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 10px; }
+
+figure { margin: 36px auto; }
+figure img { display: block; width: 100%; height: auto; border-radius: 16px; background: #e9e5da; }
+figure.hero { max-width: 1280px; margin: 0 auto 40px; }
+figure.hero img { border-radius: 24px; }
+figure.portrait img { width: auto; max-width: 100%; max-height: 82vh; margin: 0 auto; }
+figcaption { font-size: 14px; line-height: 1.45; color: var(--muted); margin-top: 10px; }
+figure.portrait figcaption { text-align: center; }
+figcaption .credit { display: block; font-size: 12px; letter-spacing: .02em; margin-top: 2px; opacity: .85; }
+figure.hero figcaption { max-width: var(--col); margin: 10px auto 0; }
+
+.byline { font-size: 15px; color: var(--muted); margin: 0 0 26px; }
+article p { margin: 0 0 1.05em; }
+article blockquote { margin: 1.4em 0; padding: 4px 0 4px 22px; border-left: 3px solid var(--rule); color: #3b3738; font-style: italic; }
+article blockquote p { margin: 0; }
+hr.break { border: 0; height: 24px; margin: 2.4em 0; background: radial-gradient(circle, var(--ink) 1.6px, transparent 2px) center/22px 24px repeat-x; width: 66px; margin-left: auto; margin-right: auto; }
+
+mark.tk { background: var(--tk); color: var(--ink); padding: 1px 5px; border-radius: 4px; font-weight: 600; font-size: .92em; white-space: normal; }
+.note { display: block; margin: .6em 0; padding: 10px 14px; border: 1.5px dashed var(--rule); border-radius: 10px; color: var(--muted); font-size: 15px; font-style: italic; }
+footer { max-width: var(--col); margin: 56px auto 70px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
+footer p { margin: 0 0 6px; }
+
+@media (max-width: 600px) {
+  body { font-size: 17px; }
+  .review { padding: 22px 18px 16px; border-radius: 14px; margin-top: 24px; }
+  header.article { padding-top: 40px; }
+  figure.hero img { border-radius: 14px; }
+  figure img { border-radius: 12px; }
+}
+</style>
+</head>
+<body>
+<div class="draftbar">Draft for review · Not for publication or sharing</div>
+<div class="wrap">
+
+<section class="review" aria-labelledby="review-h">
+<h2 id="review-h">For Robert and Dallas</h2>
+<p>Thank you both for your time. This is a working draft of the story for XPEL's <em>Beyond the Surface</em>. It isn't final, so please don't share it yet. Two asks:</p>
+<ol>
+<li><strong>Read your quotes.</strong> We've lightly edited them for clarity and length: trimming false starts and repeated words, and adding a word in [brackets] where it helps. Please make sure they still say what you meant, and tell me if anything is off.</li>
+<li><strong>Help fill the gaps</strong> below, which are <mark class="tk">highlighted like this</mark> in the story. If we got anything else wrong, or missed something you think matters, I'd love to hear that too.</li>
+</ol>
+<h3>For Robert</h3>
+<ul>
+<li><strong>The date you flew out.</strong> Our photos suggest Wednesday, July 1. But you mentioned seeing a SpaceX launch that night, and the closest launch from Florida was the night of Sunday, June 28. Which was it?</li>
+<li><strong>The Corvette.</strong> What year and model?</li>
+<li><strong>The stores.</strong> How long has your family run Tint World stores, and is it fair to call you a second-generation operator?</li>
+<li><strong>The first night.</strong> About what time did you stop working, and what time did everyone sit down to eat?</li>
+</ul>
+<h3>For Dallas</h3>
+<ul>
+<li><strong>Your first trip.</strong> About how long after you signed up in 2018 did you and your son go out to the tower?</li>
+<li><strong>Craig.</strong> What's his last name, and is he comfortable being named? Would any of the other co-owners like to be named?</li>
+</ul>
+<p class="sign">Reply to me by text or email whenever it's convenient. Thanks again. —Joel</p>
+</section>
+
+<header class="article">
+<div class="crumbs">Beyond the Surface<span>→</span>Draft</div>
+<span class="wt">Working title</span>
+<h1>The Tower at the End of the Frying Pan</h1>
+<div class="meta">Draft of October 24, 2026</div>
+</header>
+
+<figure class="hero"><img src="img/still-002-tower-boats.jpg" alt="The Frying Pan Tower, more than thirty miles off Cape Fear, North Carolina." loading="lazy"><figcaption>The Frying Pan Tower, more than thirty miles off Cape Fear, North Carolina. <span class="credit">Tint World production still, courtesy XPEL</span></figcaption></figure>
+
+<article class="col">
+<p class="byline">Words: Joel Johnson · Photos: Tint World, U.S. Coast Guard, NOAA, Library of Congress</p>
+<p>It was a clear day and they were flying low as the tower came into view. Robert Harman knew the waters of the Atlantic beneath the helicopter were relatively shallow—about fifty feet, compared with the hundreds of feet where the continental shelf falls away some twenty-five miles farther east—but this far out, more than thirty miles off Cape Fear, only the steel structure of the tower broke the endless horizon in any direction.</p>
+<figure class="portrait"><img src="img/still-001-approach.jpg" alt="Approaching the tower by helicopter." loading="lazy"><figcaption>Approaching the tower by helicopter. <span class="credit">Tint World production still, courtesy XPEL</span></figcaption></figure>
+<p>Few would call the tower’s design beautiful. Purposeful at best, four legs of tubular steel rising out of the water, hatched with bracing and an open staircase that descended almost but not quite to the sea, the final few feet spiraling around one of the legs and ending in bent, broken steps that had been torn off by wave action years before. The simplicity of the superstructure was a testament to steel—a “giant steel treehouse,” according to Harman—having held the tower’s 8,100-square-foot single-story, enclosed operations deck five stories in the air for more than sixty years through high seas and hurricanes. It reminded him of the type of temporary field offices on the sites of big construction projects, except this one had a helipad for a roof. As they approached, ten-foot-tall letters arrayed along the rails of the observation deck directly under the operations deck came into view: FRYING PAN.</p>
+<p>As the pilot brought the Robinson R44 over the operations deck, Harman could see how each of its four walls pushed out slightly at their centers and wondered if the original architects had made the structure a slight octagonal shape so that it could better direct the winds of the open sea around it, like the prows of four wide ships. It would be Harman’s second visit to the tower. This time he came prepared for work: fifty-five precut sheets of XPEL Dark Neutral 15% window film, plus a handful of spares, every tool he thought he might need, and two white cardboard boxes of tacos.</p>
+<hr class="break">
+<p>Like all good stories of oceanic architecture, this one started with a glowing Chevrolet Corvette.</p>
+<p>The Harmans own five Tint World stores in North Carolina <mark class="tk">TK: for decades? second-generation?</mark>, and Robert, as a second-generation operator of a family business, knew a little something about getting attention. He’d installed glowing electroluminescent panels under the graphic vinyl wrap of his <mark class="tk">TK YEAR AND MODEL</mark> Corvette which made the logo glow.</p>
+<p>“People would always approach me and ask me about it,” says Harman. “I was in the River Lights community, which is in South Wilmington, out to dinner one night, and there happened to be a gentleman who approached me. He said, ‘Hey, I really like this technology. Can you make a bigger version of this? Like, for a helipad?’ And I laughed and said, ‘Yeah, for sure! Give me a call.’”</p>
+<p>That’s how Robert first met Richard Neal, who had bought the Frying Pan Tower in a government auction in 2010. As they talked over the next weeks, they quickly determined that a glowing helicopter touchdown-and-lift-off circle would be too expensive to be practical. (The glowing helipad idea wasn’t just for kicks; the tower’s roof has few lights for helicopter pilots to land by at night.) But as Harman learned more about the rehabilitation project of the tower, his experience with the heat-abating utility of tint on the windows of structures was an obvious next recommendation:</p>
+<p>“Once we started talking, they were like, ‘Oh, my gosh, you know, we hadn’t even considered that. Why haven’t we tinted this place? Like, we’re out here in the middle of nowhere with no HVAC. We need every possible barrier we can get.’”</p>
+<p>When it comes to heat, the Frying Pan Tower is aptly named. Fifty-five windows circle the operations deck, with unobstructed views in every direction. The same sun that powers its limited solar electricity generation during the day is also heating up the inside of the tower. On bright days, the sun simply outruns the HVAC, with interior temperatures topping one hundred degrees.</p>
+<figure class="wide"><img src="img/still-018-sun-windows.jpg" alt="Late-day sun pours through the operations deck windows." loading="lazy"><figcaption>Late-day sun pours through the operations deck windows. <span class="credit">Tint World production still, courtesy XPEL</span></figcaption></figure>
+<p>They shook on it. Harman and his team would install the latest high-performance architectural tint on the windows of the tower. It would be a huge undertaking, perhaps the biggest install the Harman family had ever done, and certainly one of the most immediately impactful to a structure’s efficiency, not to mention the health and comfort effects on the volunteer caretakers and refurbishers living inside the structure for days or weeks at a time as they sweated through the years-long remodeling effort.</p>
+<p>The window film was ordered and arrived quickly to Harman’s office. Plans for a scouting and measuring trip were made. Robert thought they’d be done in two months, three at most.</p>
+<p>Unfortunately, the sea had other plans.</p>
+<hr class="break">
+<p>Oceans usually eat coastlines. Yet at capes, where two currents running in opposite directions meet, they can build; the opposed currents push against each other, drawing sediments from each side of a shore and pushing them up and out to scribe lines of sand and shell rock from the coast into the sea.</p>
+<p>At Cape Fear, this has likely been happening since the end of the last ice age, more than ten thousand years ago, on top of the Cape Fear Arch, a buried ridge of ancient limestone and sandstone that is still, very slowly, rising. Over the millennia, an estimated billion cubic yards of sand have been sent out into the ocean, wave by wave, forming a shallow shoal that runs some sixteen miles south-southeast from the cape in a shape that reminded early English-speaking settlers of a cast-iron frying pan, with a wider plain near the cape and a thin handle stretching out to its tip. Viewed from satellite altitudes, it looks a lot like Florida in miniature, if Florida sat just a few feet underwater.</p>
+<figure class="wide"><img src="img/loc-mouzon-1775.jpg" alt="Frying Pan Shoals, drawn as a long handle off Cape Fear, on Henry Mouzon&#x27;s 1775 map of North and South Carolina." loading="lazy"><figcaption>Frying Pan Shoals, drawn as a long handle off Cape Fear, on Henry Mouzon's 1775 map of North and South Carolina. <span class="credit">Library of Congress, Geography and Map Division (<a href="https://www.loc.gov/item/gm71002153/">gm71002153</a>)</span></figcaption></figure>
+<p>The Frying Pan Shoals are so expansive that they even guard the evidence of an older river. Just east of them, NOAA sonar found the meandering channels of streams that crossed dry land twenty thousand years ago, when sea level was more than four hundred feet lower—possibly the ancient Cape Fear River itself. The shoal, scientists suspect, acts as a wall, keeping drifting sand from burying the old riverbeds.</p>
+<figure class="wide"><img src="img/noaa-shoal-barrier.jpg" alt="NOAA&#x27;s 2023 sonar survey: the shoal (arrow) and, just east of it, the preserved channels of ancient streams." loading="lazy"><figcaption>NOAA's 2023 sonar survey: the shoal (arrow) and, just east of it, the preserved channels of ancient streams. <span class="credit">NOAA Office of Coast Survey (<a href="https://nauticalcharts.noaa.gov/updates/possible-ancient-river-system-discovered-off-wilmington-north-carolina/">source</a>)</span></figcaption></figure>
+<p>The underwater rise of the shoals also happens to be a perfect trap for ships. Sailing from the north or south along the coast of Cape Fear, a ship could find the sea beneath it transitioning abruptly from a comfortable six to nine fathoms (about thirty-five to fifty-five feet) of open water to a depth of less than a fathom—and near the cape, according to the government’s own sailing directions, the shoal is “bare in spots.” For anything larger than a rowboat, the shoals are ship-catchers.</p>
+<p>And for hundreds of years, they caught ship after ship. <span class="note">Section in progress: the shoals’ shipwrecks</span></p>
+<p>In 1784, the North Carolina General Assembly began charging an extra six pence per ton on every ship coming into the Cape Fear River to trade at Wilmington, the then fifty-year-old colonial city, to fund the construction of a lighthouse on Bald Head Island that forms the tip of the cape. The first lighthouse was operational by 1794, yet it was soon apparent—presumably by the continued wreckage of ships—that a shore-bound lighthouse was not sufficient for marking the shoals.</p>
+<p>In 1852, the newly formed Light-House Board asked for a “lightship” to be placed at the tip of the shoals, moored in place as a permanent beacon—a floating lighthouse.</p>
+<blockquote>
+<p>The vessel will carry two lights at an elevation of about 40 feet above the level of the sea, on her two masts—she will be painted yellow, as well as her lower masts, but with white topmasts—and she will carry an openwork oval daymark, painted black, at an elevation of about 58 feet above the water line. Her yellow hull will have “Frying-pan Shoals” in large black letters on both sides.</p>
+</blockquote>
+<p>This ship was the first of seven lightships, mostly wooden-hulled, that would float watch from 1854 to 1930; the seventh, LV 115, a two-masted, riveted-steel lightship built in Charleston, was launched in 1929 and began her duty in 1930. Dubbed <em>Frying Pan</em>, she operated continuously until 1964, with a short interruption from lightship duty during World War II, when she was sailed to Panama to serve as an examination vessel at the Atlantic entrance to the Panama Canal. Every two years her crew would bring her to dry dock for repairs, welding patches into the hull where they could and pouring concrete into her bilges where her skin was too thin to weld.</p>
+<figure class="wide"><img src="img/uscg-1949-lightship.jpg" alt="The lightship Frying Pan (LV 115) on station, 1949." loading="lazy"><figcaption>The lightship <em>Frying Pan</em> (LV 115) on station, 1949. <span class="credit">U.S. Coast Guard photograph, via Frying Pan Shoals Light Station (fpsls.com)</span></figcaption></figure>
+<p>It was a lonely posting for the Coast Guard crews, punctuated occasionally by incredible storms. Hurricane Donna almost scuttled LV 115 in 1960, with winds marked over one hundred miles an hour before her anemometer was ripped off the ship, and waves that one crewman, David Melvin, estimated at fifty feet—more than a third of the ship’s 133-foot length.</p>
+<p>Whether it was the storms or simply the age of <em>Frying Pan</em>, the Coast Guard recognized the era of the lightships at the shoals was coming to an end and commissioned a permanent structure, a four-legged rig with a cost of $1.5 million in the design of a “Texas Tower,” so called because of its similarity in design to the derricks developed for oil extraction in the Gulf in the early twentieth century. An additional $2 million paid for the construction of an operational deck in Louisiana, which was shipped to the site on barges and placed atop the Texas Tower by crane.</p>
+<figure class="wide"><img src="img/uscg-1964-barge.jpg" alt="The station&#x27;s components under tow to Frying Pan Shoals, 1964." loading="lazy"><figcaption>The station's components under tow to Frying Pan Shoals, 1964. <span class="credit">U.S. Coast Guard photograph, via Frying Pan Shoals Light Station (fpsls.com)</span></figcaption></figure>
+<p>In November 1964, the new tower complete and staffed by a fresh six-man crew, <em>Frying Pan</em> circled the tower, gave three valedictory blasts of her whistle, and chugged toward Cape May. The ship was intended to serve as a relief lightship off the New Jersey coast, but in November 1965 she was decommissioned, and in 1967 she was donated to Southport, North Carolina, as a museum ship. In the early 1980s Southport sold her to a Norfolk ship salvager, who towed her to a private dock on Maryland’s Wicomico River. There, by most accounts after a pipe burst in the cold, she sank at her dock in Whitehaven.</p>
+<figure class="portrait"><img src="img/uscg-1965-tower-lightship.jpg" alt="The new tower stands over the lightship it replaced." loading="lazy"><figcaption>The new tower stands over the lightship it replaced. <span class="credit">U.S. Coast Guard photograph, via Frying Pan Shoals Light Station (fpsls.com)</span></figcaption></figure>
+<hr class="break">
+<p>The tower has a way of drawing in new keepers.</p>
+<p>In 2018, Dallas Fountain, a retired commercial contractor in Wake Forest, got the call. He was online poking around and stumbled onto a video of the Frying Pan Tower and was intrigued that such an interesting structure existed in the ocean so close to his home. Even better, you could book a trip to visit. So Dallas did just that, first making the trek to the tower with his son <mark class="tk">TK X WEEKS</mark> later.</p>
+<p>“[As soon as] the helicopter sat down on the helipad I knew I was in,” Dallas says. He started daydreaming about how he could contribute to the tower’s restoration. But the then-steward of the tower, Richard Neal, mentioned offhandedly that he might consider selling the tower in the future. He’d worked on it for years, expanding its solar power generation, adding lights to the helipad, working alone or with volunteers to keep the tower functional, without the deep resources of the government or full-time caretakers. Neal had poured his heart into the tower, but he wouldn’t be able to keep up the pace forever. Dallas didn’t press him. But he kept in touch, eventually becoming one of several fractional owners brought in by Neal for support.</p>
+<p>In the summer of 2026, Dallas got the call he’d been thinking about for eight years: <em>Are you guys ready to take over the tower?</em> Alongside a handful of fellow co-owners—a builder of automation machines, a computing engineer, another construction veteran, a heart surgeon—he and the group bought out the owners who were stepping away. The tower was now theirs—along with all its perpetual challenges.</p>
+<p>“The first night [after the transition] we got out there and the refrigerator went out,” says Dallas. “The water system needed improvements. We had to get that up and running.”</p>
+<p>“We had a guy come out doing an interview with us and he was following me through [the operations deck] and I went to open the door and the handle came off. And I put the handle back on enough to continue and said, ‘You know, I’ll get that in a little bit.’ Well, by the time I came back through, somebody else had already fixed it. Everybody pitches in out there. It doesn’t matter what it is.”</p>
+<p>“Of course, our biggest challenge is transportation. Everything has to be either by boat or helicopter, including bringing trash back to land. There were a lot of building materials that were brought out for previous repairs that didn’t end up getting used. So we had to get that cleaned up so we can move around. We’ve made a lot of headway in three and a half months.”</p>
+<p>The team found someone willing to rebuild, pro bono, the 1964 Brunswick pool table that had sat in the tower for over fifty years, a heavy slate original that Dallas guesses was probably already in the operations deck structure when it was barged and craned onto the tower legs in 1964.</p>
+<p>The tower’s period furniture is one of the unappreciated aspects of the Frying Pan Tower itself, one of seven Texas Tower lighthouses the Coast Guard built between 1961 and 1967, only three of which still stand. (The other two are Chesapeake Light, off the mouth of Chesapeake Bay, and Diamond Shoals Light, off Cape Hatteras.) Dallas guesses that most of the furniture from the other towers was just pushed into the sea before they were destroyed; future wreck divers who discover big pieces of slate sticking up out of the bottom of the ocean should check nearby for billiard balls.</p>
+<figure class="wide"><img src="img/still-020-main-room.jpg" alt="The tower&#x27;s main room." loading="lazy"><figcaption>The tower's main room. <span class="credit">Tint World production still, courtesy XPEL</span></figcaption></figure>
+<p>The new team knew they also had to do something about all the light and heat. At sea, light doesn’t just come from above. It also bounces off the water and back up. And while some of the heat gain is mitigated by the cooling winds of the open water, the tower itself is not unlike a giant solar oven.</p>
+<p>And at certain times during the day, the sunlight shines directly into some of the tower’s fifty-five external windows.</p>
+<p>“When you wake up,” says Dallas, “typically the sun would just be right in your face.” The volunteers would get to work early before the tower started to heat up, as daytime interior temperatures could be almost one hundred degrees—the HVAC just couldn’t keep up during the day, and the team would often have to wait until the evening to run it to try to get a few hours of conditioned air before they went to sleep.</p>
+<p>On the other hand, all that sunlight is good for solar power generation.</p>
+<p>“We’re running 98 percent off solar now, which is great,” says Dallas. “Every once in a while we’ll have to turn generators on, but very little.” But as anyone who has run a home or facility on solar power knows, the trick to operating on a limited power budget is often to find efficiencies that prevent you from needing the power in the first place. In a home, that might be insulation. In an 8,100-square-foot steel tower in the ocean, that means blocking the heat from the sun.</p>
+<p>Dallas and the team recalled hearing something about a plan to put UV protectant film on the tower’s windows a couple of years back. It took some sleuthing, but the team tracked down Robert Harman and gave him a call.</p>
+<p><em>Would you still be interested in coming out to the Frying Pan Tower and helping us with this heat?</em></p>
+<p>On the other end of the line, Robert Harman laughed.</p>
+<p>“I’ve had the supplies sitting right next to me for two years,” Harman told the tower team. “I’ve been waiting for the call.”</p>
+<hr class="break">
+<p>Many travel to the Frying Pan Tower by boat. That’s the easy part. It’s getting aboard that’s tricky.</p>
+<p>The stairs that once ran down into the ocean have long since rusted away. Now the only way up from the ocean is by hoist, similar to the kind used by the Coast Guard for water rescues from helicopters.</p>
+<p>But unlike the boats that approach the tower, which bob on top of the waves, the tower itself is fixed to the earth. Its four steel pylons are driven deep into the seafloor—292 feet into the earth, according to Dallas. So even moderate waves can scrub a boat trip to the tower.</p>
+<p>This was the very reason that Harman’s first scheduled trips to install the window film had been delayed. Rough seas. A date would be set, then weather would make getting access to the tower risky, especially since they’d need to haul up their supplies and tools as well.</p>
+<p>Unbeknownst to Harman, one of the tower’s new owners had something convenient: a pilot’s license.</p>
+<p>Which is how on <mark class="tk">TK: July 1, 2026, per camera timestamp; confirm</mark>, Robert Harman found himself in the front seat of a Robinson R44 helicopter, with a load of XPEL Dark Neutral 15% window film aboard, all fifty-five pieces precut to size with measurements from an earlier survey, along with five spares. His Tint World crew, Zach and Elliot, had been shuttled to the tower on the helicopter’s first run that afternoon, leaving Robert just enough time to grab some tacos.</p>
+<p>Craig <mark class="tk">TK: surname</mark>’s voice crackled through the headsets, describing landmarks and the topography of the shoals beneath them as the chopper thudded its way out of the Cape Fear airport near Southport, past the lighthouses of Southport and Bald Head Island, cutting over the tip of Bald Head and then riding the line of the shoals southeast. Twenty-five minutes later, they were on top of the tower unloading their gear. The pilot introduced Robert to the tower’s duty crew, then started up the helicopter and flew away—he was on duty at the hospital that evening, where he works as a heart surgeon.</p>
+<figure class="wide"><img src="img/still-013-helicopter.jpg" alt="The Robinson R44 on the tower&#x27;s helipad." loading="lazy"><figcaption>The Robinson R44 on the tower's helipad. <span class="credit">Tint World production still, courtesy XPEL</span></figcaption></figure>
+<p>It was already early evening by the time Robert set down on the tower, but he and his crew got to work anyway.</p>
+<p>While the precut film made some windows easy, not every window in the tower was in the same condition or even constructed exactly the same as the ones beside it.</p>
+<figure class="portrait"><img src="img/still-011-film-box.jpg" alt="XPEL window film, precut ashore and flown out by helicopter." loading="lazy"><figcaption>XPEL window film, precut ashore and flown out by helicopter. <span class="credit">Tint World production still, courtesy XPEL</span></figcaption></figure>
+<p>“On a job like that,” says Robert, “you have to consider what the window surface actually has around it. Metal frame windows you can pretty much get away with a quick install. But anything that has any wooden framing, it’s really, really difficult to install. And you have to be careful not to damage anything, especially things like the rubber gaskets.”</p>
+<p>Some of the windows even required some deconstruction of some of the surrounding equipment just to gain access to the glass.</p>
+<p>“We really had to look and focus. A lot of [windows] were newer. Some of them were older. Different manufacturers, you know, different things. Storm-rated versus just regular-rated.”</p>
+<figure class="wide"><img src="img/still-003-install-window.jpg" alt="Every window was a little different." loading="lazy"><figcaption>Every window was a little different. <span class="credit">Tint World production still, courtesy XPEL</span></figcaption></figure>
+<p>Around 1:30 in the morning, the install crew stopped for a late dinner with the tower’s resident volunteers, everyone working together to boil up a big batch of spaghetti, Italian sausages, and seasoned rice, onto which they piled hunks of fried fish—fresh caught off the tower just earlier that day. An hour later they all climbed up to the roof to shoot a few fireworks into the dark ocean sky. Over the southern horizon, they saw an even bigger bottle rocket: the phosphorescent tail of a SpaceX launch 500 miles of coastline away.</p>
+<figure class="portrait"><img src="img/still-009-sunset-room.jpg" alt="Working into the evening." loading="lazy"><figcaption>Working into the evening. <span class="credit">Tint World production still, courtesy XPEL</span></figcaption></figure>
+<p>You’d forgive Robert and his crew if they slept until noon, but they were back at it at six o’clock in the morning.</p>
+<p>“We just kept moving,” says Robert. The helicopter was coming back to get them in the afternoon and they wanted plenty of margin if they needed to redo a window film install.</p>
+<p>They finished by noon. They spent the next couple of hours throwing hunks of chicken into the water to feed the sharks.</p>
+<p>The impact of the window film was apparent immediately.</p>
+<figure class="portrait"><img src="img/still-005-install-squeegee.jpg" alt="Squeegeeing out a new sheet of film." loading="lazy"><figcaption>Squeegeeing out a new sheet of film. <span class="credit">Tint World production still, courtesy XPEL</span></figcaption></figure>
+<p>“When we landed, five o’clock the first day, it was about 104 degrees in the tower in the main room,” explains Robert. “By the next day, by the time we had left, it was actually a hotter day outside, and it was only, like, eighty-three degrees. It had dropped almost twenty degrees overnight. Same tower, same conditions, same everything.”</p>
+<p>For Robert and the Tint World team, it wasn’t just the most memorable job of the year, it was one of the largest.</p>
+<p>“We’re in the Charlotte market, the Wilmington market, and we do big, big jobs. Warehouses, you know, full police departments, full courthouses. The tower was the biggest job we did all year and we do some very big jobs.”</p>
+<p>As for the sun in the face of morning tower residents, Dallas happily reports that the glare—and the heat—are a thing of the past.</p>
+<p>“That’s pretty much gone away,” he says. “Obviously you still see [the sun], but it’s subdued sun, and same thing in the evening. It’s like being in the shade all the time. Out there, with the kind of sun that hits those windows, it is an amazing difference. It’s night and day.”</p>
+<p>Comfort won’t improve just for the volunteers as they continue to refurbish the structure, but also for the guests who will soon be welcomed to the tower as the team opens it to others.</p>
+<p>“Our vision is, one, keep it from falling into the ocean. And two, to make it just like you were back there in 1964. We’re trying to make it as original as we can, so that when somebody comes up, it’s almost going to be like a museum.” Sharing the tower with others is what helps the team grind through the ongoing challenge of keeping a building far beyond its original, planned service life safe and resilient in a notoriously destructive sea.</p>
+<p>“It’s a labor of love. The joy you get from people coming out, and they’ve never been there—it’s amazing. It’s magical. It really is.”</p>
+<p>And now that the operations deck is a better, more comfortable place to work, the team is ready to take on an even greater challenge: restoring the light tower that once held the beacon that warned ships off the shoals. Its lantern has been open to the sky for years, rain running down into the maintenance rooms below. The plan is to glaze it again. And if they need help with the glass? They know just who to call.</p>
+
+</article>
+
+<footer>
+<p>Draft for fact-checking by the people interviewed. Not for publication, and not for sharing. Historical photographs are public domain or credited to their sources; production stills courtesy of XPEL.</p>
+<p>Headline type: Mattone by Collletttivo, under the SIL Open Font License.</p>
+</footer>
+
+</div>
+</body>
+</html>

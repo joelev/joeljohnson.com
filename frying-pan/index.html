@@ -65,9 +65,9 @@ figure.hero figcaption { max-width: var(--col); margin: 10px auto 0; }
 
 .byline { font-family: var(--body); font-size: 15px; color: var(--muted); margin: 0 0 26px; }
 article p { margin: 0 0 1.05em; font-family: var(--serif); line-height: 1.65; letter-spacing: 0; text-wrap: pretty; font-optical-sizing: auto; font-kerning: normal; }
-article p.dc { display: flow-root; min-height: calc(1.65em * 3); }
-article p.dc::first-letter { float: left; font-family: var(--serif); font-weight: 600; font-size: 4.95em; line-height: .8; margin: .07em .09em 0 -.02em; color: var(--ink); }
-@supports (initial-letter: 3) or (-webkit-initial-letter: 3) { article p.dc::first-letter { float: none; font-size: inherit; line-height: inherit; margin: 0 .1em 0 0; -webkit-initial-letter: 3; initial-letter: 3; } }
+article p.dc { display: flow-root; min-height: calc(1.65em * 2); }
+article p.dc::first-letter { float: left; font-family: var(--serif); font-weight: 600; font-size: 3.3em; line-height: .8; margin: .08em .08em 0 -.02em; color: var(--ink); }
+@supports (initial-letter: 2) or (-webkit-initial-letter: 2) { article p.dc::first-letter { float: none; font-size: inherit; line-height: inherit; margin: 0 .1em 0 0; -webkit-initial-letter: 2; initial-letter: 2; } }
 article blockquote { margin: 1.4em 0; padding: 4px 0 4px 22px; border-left: 3px solid var(--rule); color: #3b3738; font-style: italic; font-family: var(--serif); }
 article blockquote p { margin: 0; }
 hr.break { border: 0; height: 24px; margin: 2.4em 0; background: radial-gradient(circle, var(--ink) 1.6px, transparent 2px) center/22px 24px repeat-x; width: 66px; margin-left: auto; margin-right: auto; }

@@ -84,10 +84,46 @@ function onRebuild() {
   syncWorkshop();
 }
 
+// A tiny silent WAV, looped through a media element. On iOS a playing media element puts the
+// page in the "playback" audio category, so Web Audio is not muted by the ring/silent switch
+// (older iOS has no navigator.audioSession to ask for that directly).
+function silentWav() {
+  const n = 4800, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+  const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 48000, true); v.setUint32(28, 96000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+}
+function unlockAudio() {
+  // everything here must run inside the tap/click/key handler, before any await
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* not supported */ }
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent))) {
+    try {
+      if (!S.keepAlive) { S.keepAlive = new Audio(silentWav()); S.keepAlive.loop = true; S.keepAlive.setAttribute('playsinline', ''); }
+      S.keepAlive.play().catch(() => {});
+    } catch (e) { /* ignore */ }
+  }
+  try { const src = S.ctx.createBufferSource(); src.buffer = S.ctx.createBuffer(1, 1, S.ctx.sampleRate); src.connect(S.ctx.destination); src.start(0); } catch (e) { /* ignore */ }
+  return S.ctx.resume();
+}
+function audioStatus() {
+  const e = S.engine, st = (e && e.stats) || {};
+  return `audio ${S.ctx ? S.ctx.state : 'none'} @ ${S.ctx ? S.ctx.sampleRate : '?'} Hz · session ${navigator.audioSession ? navigator.audioSession.type : 'n/a'} · engine ${e && e.frame ? 'running' : 'no frames'} · load ${Math.round((st.load || 0) * 100)}% ${st.quality || ''}`;
+}
 async function start() {
   if (S.started) return;
   S.started = true;
-  await S.ctx.resume();
+  const resumed = unlockAudio();
+  // iOS suspends or "interrupts" the context on calls, app switches and screen lock: resume on the next touch
+  const again = () => { if (S.ctx && S.ctx.state !== 'running') unlockAudio(); };
+  window.addEventListener('pointerdown', again); window.addEventListener('keydown', again);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) again(); });
+  await resumed.catch(() => {});
+  setTimeout(() => {
+    if (S.ctx.state !== 'running') banner('Sound is not running (' + S.ctx.state + '). Tap anywhere to try again.');
+  }, 1500);
+  // ?debug=1 keeps a live status line on screen (for reading off a phone)
+  if (Q.get('debug') === '1') setInterval(() => { $('banner').textContent = audioStatus(); $('banner').hidden = false; }, 1000);
   $('start').classList.add('gone');
   setTimeout(() => { $('start').hidden = true; }, 600);
 }

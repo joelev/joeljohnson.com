@@ -4,8 +4,8 @@
 // URL parameters: mock=1 (replay recorded telemetry), engine=<preset name>, view=<camera>,
 // quality=auto|light|heavy, orbit=0 (no idle auto-orbit), ui=0 (hide the key hints).
 
-import { LiveScene } from './scene.js';
-import { pressureColor, config } from './engine-model.js';
+import { LiveScene } from './scene.js?v=a5c5004823';
+import { pressureColor, config } from './engine-model.js?v=a5c5004823';
 
 const Q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -26,12 +26,12 @@ async function boot() {
   let mod;
   S.mock = Q.get('mock') === '1';
   if (!S.mock) {
-    try { mod = await import('./engine.js'); } catch (e) {
+    try { mod = await import('./engine.js?v=a5c5004823'); } catch (e) {
       S.mock = true;
       banner('Live engine not available here: replaying a recording instead.');
     }
   }
-  if (S.mock) mod = await import('./mock-engine.js');
+  if (S.mock) mod = await import('./mock-engine.js?v=a5c5004823');
   const LiveEngine = mod.LiveEngine;
   S.ctx = new AudioContext({ sampleRate: 48000, latencyHint: 0 }); // 0 = the shortest output buffer the device allows
   S.presets = await LiveEngine.presets();
@@ -108,7 +108,7 @@ function unlockAudio() {
 }
 function audioStatus() {
   const e = S.engine, st = (e && e.stats) || {};
-  return `audio ${S.ctx ? S.ctx.state : 'none'} @ ${S.ctx ? S.ctx.sampleRate : '?'} Hz · session ${navigator.audioSession ? navigator.audioSession.type : 'n/a'} · engine ${e && e.frame ? 'running' : 'no frames'} · load ${Math.round((st.load || 0) * 100)}% ${st.quality || ''}`;
+  return `audio ${S.ctx ? S.ctx.state : 'none'} @ ${S.ctx ? S.ctx.sampleRate : '?'} Hz · session ${navigator.audioSession ? navigator.audioSession.type : 'n/a'} · engine ${e && e.frame ? 'running' : 'no frames'} · load ${Math.round((st.load || 0) * 100)}% ${st.quality || ''} · build ${window.__build || 'dev'}`;
 }
 async function start() {
   if (S.started) return;

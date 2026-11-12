@@ -4,8 +4,8 @@
 // URL parameters: mock=1 (replay recorded telemetry), engine=<preset name>, view=<camera>,
 // quality=auto|light|heavy, orbit=0 (no idle auto-orbit), ui=0 (hide the key hints).
 
-import { LiveScene } from './scene.js?v=a5c5004823';
-import { pressureColor, config } from './engine-model.js?v=a5c5004823';
+import { LiveScene } from './scene.js?v=15ca9e5ec7';
+import { pressureColor, config } from './engine-model.js?v=15ca9e5ec7';
 
 const Q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -26,12 +26,12 @@ async function boot() {
   let mod;
   S.mock = Q.get('mock') === '1';
   if (!S.mock) {
-    try { mod = await import('./engine.js?v=a5c5004823'); } catch (e) {
+    try { mod = await import('./engine.js?v=15ca9e5ec7'); } catch (e) {
       S.mock = true;
       banner('Live engine not available here: replaying a recording instead.');
     }
   }
-  if (S.mock) mod = await import('./mock-engine.js?v=a5c5004823');
+  if (S.mock) mod = await import('./mock-engine.js?v=15ca9e5ec7');
   const LiveEngine = mod.LiveEngine;
   S.ctx = new AudioContext({ sampleRate: 48000, latencyHint: 0 }); // 0 = the shortest output buffer the device allows
   S.presets = await LiveEngine.presets();
@@ -108,6 +108,18 @@ function unlockAudio() {
 }
 function audioStatus() {
   const e = S.engine, st = (e && e.stats) || {};
+  let level = '?';
+  if (S.analyser) { const b = new Float32Array(1024); S.analyser.getFloatTimeDomainData(b); let q = 0; for (const v of b) q += v * v; level = Math.sqrt(q / b.length).toFixed(3); }
+  return `SIGNAL ${level} · ` + audioStatusRest(e, st);
+}
+function debugBeep() {
+  // a plain tone straight to the speaker, bypassing the engine: tells "phone is silent" from "engine is silent"
+  try {
+    const o = S.ctx.createOscillator(), g = S.ctx.createGain(); o.frequency.value = 660; g.gain.value = 0.15;
+    o.connect(g); g.connect(S.ctx.destination); o.start(); o.stop(S.ctx.currentTime + 0.4);
+  } catch (e) { /* ignore */ }
+}
+function audioStatusRest(e, st) {
   return `audio ${S.ctx ? S.ctx.state : 'none'} @ ${S.ctx ? S.ctx.sampleRate : '?'} Hz · session ${navigator.audioSession ? navigator.audioSession.type : 'n/a'} · engine ${e && e.frame ? 'running' : 'no frames'} · load ${Math.round((st.load || 0) * 100)}% ${st.quality || ''} · build ${window.__build || 'dev'}`;
 }
 async function start() {
@@ -123,7 +135,8 @@ async function start() {
     if (S.ctx.state !== 'running') banner('Sound is not running (' + S.ctx.state + '). Tap anywhere to try again.');
   }, 1500);
   // ?debug=1 keeps a live status line on screen (for reading off a phone)
-  if (Q.get('debug') === '1') setInterval(() => { $('banner').textContent = audioStatus(); $('banner').hidden = false; }, 1000);
+  if (Q.has('debug')) { debugBeep(); setTimeout(debugBeep, 1200); }
+  if (Q.has('debug')) setInterval(() => { $('banner').textContent = audioStatus(); $('banner').hidden = false; }, 1000);
   $('start').classList.add('gone');
   setTimeout(() => { $('start').hidden = true; }, 600);
 }

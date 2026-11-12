@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="robots" content="noindex">
+<meta charset="utf-8">
+<title>Engine Synthesizer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<link rel="stylesheet" href="./style.css">
+<script type="importmap">
+{ "imports": {
+    "three": "./vendor/three/build/three.module.min.js",
+    "three/addons/": "./vendor/three/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="vignette"></div>
+
+<header id="top">
+  <div id="brand">
+    <div id="title">Engine Synthesizer</div>
+    <div id="elabel">&nbsp;</div>
+    <div id="espec">&nbsp;</div>
+  </div>
+  <div id="topright">
+    <div id="views" class="chips" role="group" aria-label="Camera">
+      <button data-view="engine" class="on">Engine</button>
+      <button data-view="wide">Wide</button>
+      <button data-view="exhaust">Tailpipe</button>
+      <button data-view="front">End-on</button>
+      <button data-view="top">Above</button>
+    </div>
+    <div id="load" class="pill" title="Share of real time the audio thread spends simulating"><span>audio thread</span><b id="loadval">--</b><i id="quality"></i></div>
+    <button id="btnInfo" class="pill btn">What is simulated</button>
+  </div>
+</header>
+
+<button id="btnEngines" class="tab left" aria-expanded="true">Engines</button>
+<aside id="engines" class="panel left open"><h2>Engines</h2><div id="enginelist"></div></aside>
+
+<button id="btnWorkshop" class="tab right" aria-expanded="false">Workshop</button>
+<aside id="workshop" class="panel right">
+  <h2>Workshop</h2>
+  <p class="hint" id="wsnote">Changes rebuild the engine when you let go of a slider.</p>
+  <div class="row seg" id="rowCrank" hidden>
+    <label>Crankshaft</label>
+    <div class="segs"><button data-crank="v8_cross">Cross-plane</button><button data-crank="v8_flat">Flat-plane</button></div>
+  </div>
+  <div class="row"><label for="wsHeader">Header length <output id="oHeader"></output></label><input id="wsHeader" type="range" min="50" max="220" step="5" value="100"></div>
+  <div class="row"><label for="wsUnequal"><span id="lblUnequal">Unequal headers</span> <output id="oUnequal"></output></label><input id="wsUnequal" type="range" min="-45" max="45" step="5" value="0"></div>
+  <div class="row"><label for="wsExhaust">Exhaust length <output id="oExhaust"></output></label><input id="wsExhaust" type="range" min="40" max="220" step="5" value="100"></div>
+  <div class="row"><label for="wsCam">Cam overlap <output id="oCam"></output></label><input id="wsCam" type="range" min="-12" max="32" step="2" value="0"></div>
+  <div class="row check"><label><input id="wsMuffler" type="checkbox" checked> Muffler</label></div>
+  <div class="row"><button id="wsReset" class="btn wide">Reset to stock</button></div>
+</aside>
+
+<section id="dash">
+  <div id="cluster">
+    <canvas id="tach" width="560" height="560"></canvas>
+    <div id="readouts">
+      <div><b id="rTorque">0</b><span>N·m</span></div>
+      <div><b id="rPower">0</b><span>kW</span></div>
+      <div><b id="rHp">0</b><span>hp</span></div>
+    </div>
+  </div>
+  <div id="center">
+    <div id="lamprow"><span class="cap">combustion</span><div id="lamps"></div><span id="cut">FUEL CUT</span></div>
+    <canvas id="scope" width="1200" height="150"></canvas>
+    <canvas id="spec" width="600" height="160"></canvas>
+    <div id="legend">
+      <span>−<i class="pf">0.7</i></span><div id="legendbar"></div><span>+<i class="pf">0.7</i> bar</span>
+      <span class="cap">gas pressure relative to ambient · header glow = gas temperature</span>
+    </div>
+  </div>
+  <div id="drive">
+    <div id="modes">
+      <button id="btnMode" class="btn">Neutral</button>
+      <button id="btnAuto" class="btn on">Auto shift</button>
+      <div class="shift"><button id="btnDown" class="btn">−</button><button id="btnUp" class="btn">+</button></div>
+      <button id="btnBrake" class="btn">Brake</button>
+    </div>
+    <div id="pedal" role="slider" aria-label="Throttle" aria-valuemin="0" aria-valuemax="100" tabindex="0"><div id="pedalfill"></div><div id="pedalcap">THROTTLE</div></div>
+  </div>
+</section>
+
+<div id="keys">Hold <kbd>Space</kbd> or <kbd>W</kbd> for throttle · <kbd>D</kbd> drive/neutral · <kbd>E</kbd>/<kbd>Q</kbd> shift · <kbd>S</kbd> brake · drag to orbit</div>
+<div id="banner" hidden></div>
+
+<div id="note" class="modal" hidden>
+  <div class="card">
+    <h2>What is simulated</h2>
+    <p>The sound and everything that moves come from one physical model running in your browser: no recordings, no samples.</p>
+    <h3>Simulated, and drawn from the simulation</h3>
+    <ul>
+      <li><b>Sound</b>: pressure waves leaving the tailpipes and the intake, from gas flow solved through the cylinders, valves and pipes.</li>
+      <li><b>Crank, pistons, valves</b>: position and lift at true scale.</li>
+      <li><b>Gas colour in pipes</b>: pressure relative to ambient (blue below, orange to white above; dark at ambient).</li>
+      <li><b>Header glow</b>: temperature of the gas inside the exhaust pipes. The metal's own temperature is not simulated.</li>
+      <li><b>Cylinder glow and lamps</b>: cylinder pressure, burn rate and gas temperature.</li>
+      <li><b>Tailpipe plume</b>: its speed and density follow the gas velocity at the open end of the exhaust.</li>
+      <li><b>Dials</b>: speed, torque, power, gear and road speed are the model's own numbers.</li>
+    </ul>
+    <h3>Decorative</h3>
+    <ul>
+      <li><b>Overrun flames</b>: shown when the model cuts fuel at speed. Afterfire in the exhaust is not simulated.</li>
+      <li><b>Camera shake, floor reflection, glow, vignette</b>.</li>
+      <li><b>Where the pipes run and what the parts look like</b>: lengths and diameters are the simulated ones; the routing and shapes are a drawing. The picture is stroboscopic, so the engine appears to turn slowly.</li>
+    </ul>
+    <button id="noteClose" class="btn wide">Close</button>
+  </div>
+</div>
+
+<div id="start" class="overlay">
+  <div class="startcard">
+    <div class="kicker">physical model · no samples</div>
+    <h1>Engine Synthesizer</h1>
+    <p id="starttext">Every sound is gas moving through cylinders, valves and pipes, solved live.</p>
+    <button id="btnStart" class="go" disabled>Loading…</button>
+    <div class="startkeys"><span><kbd>Space</kbd> throttle</span><span><kbd>D</kbd> drive</span><span><kbd>E</kbd> <kbd>Q</kbd> shift</span><span><kbd>S</kbd> brake</span></div>
+  </div>
+</div>
+<div id="err"></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

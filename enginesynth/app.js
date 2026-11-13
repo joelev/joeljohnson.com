@@ -4,8 +4,8 @@
 // URL parameters: mock=1 (replay recorded telemetry), engine=<preset name>, view=<camera>,
 // quality=auto|light|heavy, orbit=0 (no idle auto-orbit), ui=0 (hide the key hints).
 
-import { LiveScene } from './scene.js?v=4a24fb3a02';
-import { pressureColor, config } from './engine-model.js?v=4a24fb3a02';
+import { LiveScene } from './scene.js?v=6eac95ece6';
+import { pressureColor, config } from './engine-model.js?v=6eac95ece6';
 
 const Q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -26,12 +26,12 @@ async function boot() {
   let mod;
   S.mock = Q.get('mock') === '1';
   if (!S.mock) {
-    try { mod = await import('./engine.js?v=4a24fb3a02'); } catch (e) {
+    try { mod = await import('./engine.js?v=6eac95ece6'); } catch (e) {
       S.mock = true;
       banner('Live engine not available here: replaying a recording instead.');
     }
   }
-  if (S.mock) mod = await import('./mock-engine.js?v=4a24fb3a02');
+  if (S.mock) mod = await import('./mock-engine.js?v=6eac95ece6');
   const LiveEngine = mod.LiveEngine;
   S.ctx = new AudioContext({ sampleRate: 48000, latencyHint: 0 }); // 0 = the shortest output buffer the device allows
   S.presets = await LiveEngine.presets();
@@ -160,8 +160,8 @@ async function start() {
 // A browser for however many engines the simulator carries: grouped by family, searchable,
 // with a details pane (sourced facts, what is estimated, links). Nothing here is a fixed list;
 // families and counts come from the presets.
-const FAMILY_RANK = { single: 1, twin: 2, triple: 3, three: 3, 'inline-four': 4, four: 4, five: 5, 'inline-five': 5, six: 6, 'inline-six': 6, v6: 6.5, eight: 8, 'inline-eight': 8, 'straight-eight': 8, v8: 8.5, v10: 10, v12: 12, w: 12.6, w8: 8.7, w12: 12.6, v16: 16, w16: 16.5, flat: 50, boxer: 50, rotary: 60, wankel: 60, radial: 70 };
-const FAMILY_TITLE = { single: 'Singles', twin: 'Twins', triple: 'Triples', three: 'Triples', 'inline-four': 'Inline-fours', four: 'Fours', five: 'Fives', 'inline-five': 'Fives', six: 'Inline-sixes', 'inline-six': 'Inline-sixes', eight: 'Straight-eights', flat: 'Flat', boxer: 'Flat', rotary: 'Rotary', wankel: 'Rotary', radial: 'Radial', w: 'W' };
+const FAMILY_RANK = { single: 1, twin: 2, triple: 3, three: 3, 'inline-four': 4, four: 4, five: 5, 'inline-five': 5, six: 6, 'inline-six': 6, v6: 6.5, eight: 8, 'inline-eight': 8, 'straight-eight': 8, v8: 8.5, v10: 10, v12: 12, w: 12.6, w8: 8.7, w12: 12.6, v16: 16, w16: 16.5, flat: 50, boxer: 50, rotary: 60, wankel: 60, radial: 70, 'two-stroke': 80, 'two-strokes': 80, two_stroke: 80 };
+const FAMILY_TITLE = { single: 'Singles', twin: 'Twins', triple: 'Triples', three: 'Triples', 'inline-four': 'Inline-fours', four: 'Fours', five: 'Fives', 'inline-five': 'Fives', six: 'Inline-sixes', 'inline-six': 'Inline-sixes', eight: 'Straight-eights', flat: 'Flat', boxer: 'Flat', rotary: 'Rotary', wankel: 'Rotary', radial: 'Radial', w: 'W', 'two-stroke': 'Two-strokes', two_stroke: 'Two-strokes' };
 const isRotary = (sp) => sp.layout === 'rotary' || sp.kind === 'wankel';
 const unitsOf = (sp) => (isRotary(sp) ? (sp.rotor_phase || []).length : sp.firing.length);
 const litresOf = (sp) => (isRotary(sp)
@@ -200,6 +200,7 @@ function familyGroups(list) {
     const key = k.toLowerCase().replace(/\s+/g, '-');
     if (key in FAMILY_RANK) return FAMILY_RANK[key];
     const lay = members[0].spec.layout;
+    if (members.every((m) => m.spec.kind === 'two_stroke')) return 80;
     if (members.every((m) => m.spec.layout === lay)) { if (lay === 'flat') return 50; if (isRotary(members[0].spec)) return 60; if (lay === 'radial') return 70; }
     return Math.min(...members.map((m) => unitsOf(m.spec))) + 0.9;      // unknown family: by cylinder count
   };
@@ -208,7 +209,7 @@ function familyGroups(list) {
 }
 function haystack(p) {
   const sp = p.spec, n = unitsOf(sp);
-  return [p.label, p.name, sp.family, sp.based_on, layoutWord(sp), describeLayout(sp), `${n} cylinder ${n}cyl ${n}-cyl`, sp.layout === 'v' ? `v${n}` : '', sp.layout === 'inline' ? `i${n} l${n} straight` : '', sp.layout === 'flat' ? 'boxer' : '', isRotary(sp) ? 'wankel rotor' : '', sp.generic === false ? 'real' : 'generic invented', sp.itb ? 'individual throttles itb' : '', sp.cam_switch_rpm > 0 ? 'cam switching vtec' : '']
+  return [p.label, p.name, sp.family, sp.based_on, layoutWord(sp), describeLayout(sp), `${n} cylinder ${n}cyl ${n}-cyl`, sp.layout === 'v' ? `v${n}` : '', sp.layout === 'inline' ? `i${n} l${n} straight` : '', sp.layout === 'flat' ? 'boxer' : '', isRotary(sp) ? 'wankel rotor' : '', sp.generic === false ? 'real' : 'generic invented', sp.itb ? 'individual throttles itb' : '', sp.cam_switch_rpm > 0 ? 'cam switching two-stage cam' : '', sp.kind === 'two_stroke' ? 'two-stroke 2-stroke two stroke expansion chamber' : '']
     .join(' ').toLowerCase();
 }
 const BR = { open: false, filter: 'all', q: '', active: null, shown: [] };
@@ -412,6 +413,13 @@ function syncWorkshop() {
   const rotary = base.layout === 'rotary';
   // a radial has no banks or sides to set against each other, and a rotary has one header per rotor
   $('wsUnequal').closest('.row').hidden = rotary || base.layout === 'radial';
+  // a two-stroke's pipe is one expansion chamber per cylinder (spec.chamber): the header slider scales
+  // the whole pipe; there is no cam, no separate exhaust run and no muffler to change
+  const two = base.kind === 'two_stroke';
+  $('wsCam').closest('.row').hidden = two;
+  $('wsExhaust').closest('.row').hidden = two;
+  $('wsMuffler').closest('.row').hidden = two;
+  $('lblHeader').textContent = two ? 'Expansion chamber length' : 'Header length';
   $('lblCam').textContent = rotary ? 'Port overlap' : 'Cam overlap';
   if (!S.mock) $('wsnote').textContent = rotary
     ? 'Changes rebuild the engine when you let go of a slider. Port overlap moves the exhaust port\'s closing edge later (a wider port) and the intake port\'s opening edge earlier.'
@@ -424,7 +432,8 @@ function syncWorkshop() {
 function labelWorkshop() {
   const base = baseSpec();
   if (!base) return;
-  const mean = base.primary_len.reduce((a, b) => a + b, 0) / base.primary_len.length;
+  const two = base.kind === 'two_stroke' && Array.isArray(base.chamber) && base.chamber.length;
+  const mean = two ? base.chamber.reduce((a, c) => a + c[0], 0) : base.primary_len.reduce((a, b) => a + b, 0) / base.primary_len.length;
   $('oHeader').textContent = `${Math.round(mean * +$('wsHeader').value)} cm`;   // metres x percent = centimetres
   $('oUnequal').textContent = `${+$('wsUnequal').value > 0 ? '+' : ''}${$('wsUnequal').value}%`;
   $('oExhaust').textContent = `${$('wsExhaust').value}%`;
@@ -440,6 +449,11 @@ function workshopOverrides() {
   const twoBanks = hasSides(base);
   const side = (i) => (twoBanks ? sideOf(base, i) : (i % 2 ? -1 : 1));
   const o = {};
+  if (base.kind === 'two_stroke' && Array.isArray(base.chamber) && base.chamber.length) {
+    // scale every section's length, keep its diameters: the tuned speed moves, the shape stays
+    if (hs !== 1) o.chamber = base.chamber.map((c) => [+(c[0] * hs).toFixed(4), c[1], c[2]]);
+    return o;
+  }
   if (hs !== 1 || un !== 0) o.primary_len = base.primary_len.map((L, i) => +(L * hs * (1 + un * side(i))).toFixed(4));
   if (es !== 1) { o.secondary_len = +(base.secondary_len * es).toFixed(4); o.mid_len = +(base.mid_len * es).toFixed(4); o.tail_len = +(base.tail_len * es).toFixed(4); }
   if (ov !== 0 && rotary) {

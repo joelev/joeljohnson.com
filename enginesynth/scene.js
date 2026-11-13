@@ -17,7 +17,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { EngineModel, config } from './engine-model.js?v=4a24fb3a02';
+import { EngineModel, config } from './engine-model.js?v=6eac95ece6';
 
 const V3 = THREE.Vector3;
 const RAD = Math.PI / 180;

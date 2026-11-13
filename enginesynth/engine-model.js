@@ -67,10 +67,12 @@ export function buildLayout(H) {
     const drop = r + l - (r * Math.cos(c) + Math.sqrt(l * l - r * r * Math.sin(c) * Math.sin(c)));
     return drop - Math.max(liftAt(c, 2 * Math.PI - sp.ivo * RAD, 3 * Math.PI + sp.ivc * RAD, sp.in_lift), liftAt(c, Math.PI - sp.evo * RAD, 2 * Math.PI + sp.evc * RAD, sp.ex_lift));
   };
+  // A two-stroke has no poppet valves: its ports are holes in the liner that the piston uncovers.
+  const two = H.kind === 'two_stroke';
   let minGap = Infinity;
-  for (let c = 0; c < 4 * Math.PI; c += Math.PI / 720) minGap = Math.min(minGap, valveGap(c));
+  if (!two) for (let c = 0; c < 4 * Math.PI; c += Math.PI / 720) minGap = Math.min(minGap, valveGap(c));
   const margin = 0.0008;
-  const nIn = sp.in_valves === 1 ? 1 : 2, nEx = sp.ex_valves === 1 ? 1 : 2;
+  const nIn = two ? 0 : sp.in_valves === 1 ? 1 : 2, nEx = two ? 0 : sp.ex_valves === 1 ? 1 : 2;
   const phi = (nIn * sp.in_valve_d * sp.in_valve_d + nEx * sp.ex_valve_d * sp.ex_valve_d) / (B * B);
   let recess = 0, hc = hcFull;
   if (hcFull + minGap < margin) {
@@ -78,6 +80,14 @@ export function buildLayout(H) {
     hc = hcFull - recess * phi;
   }
   const deck = r + l + ch + hc;
+  // two-stroke ports, as heights along the cylinder axis from the crank: each port's top edge is
+  // where the piston crown is at the crank angle the port opens (degrees after TDC), so the
+  // drawn piston uncovers it exactly when the simulator opens it; the bottom edge is the crown at BDC
+  const crownAt = (deg) => { const c = deg * RAD; return r * Math.cos(c) + Math.sqrt(l * l - r * r * Math.sin(c) * Math.sin(c)) + ch; };
+  const ports = two ? {
+    exTop: crownAt(sp.ex_port_open), trTop: crownAt(sp.tr_port_open), bottom: crownAt(180),
+    inY: (l - r) - 0.25 * B, wall: 0.505 * B,
+  } : null;
   const pitch = 1.22 * B, nslots = Math.max(...sp.slot) + 1;
   const slots = [...Array(nslots)].map(() => []);
   for (let i = 0; i < n; i++) slots[sp.slot[i]].push(i);
@@ -121,10 +131,19 @@ export function buildLayout(H) {
       tEx.copy(a).multiplyScalar(0.3).addScaledVector(b, 0.5).addScaledVector(exX, 0.8).normalize();
       uIn.copy(exX).multiplyScalar(0.75).addScaledVector(a, -0.65).normalize();
     }
-    cyl.push({ i, dir, a, b, s, x, exPort: port(1), inPort: port(-1), tEx, uIn });
+    let exPort = port(1), inPort = port(-1);
+    if (two) {
+      // exhaust leaves the side of the barrel at the middle of its port; air enters the crankcase
+      // behind the cylinder (reed or piston port)
+      exPort = base.clone().addScaledVector(a, 0.5 * (ports.exTop + ports.bottom)).addScaledVector(b, ports.wall + 0.012);
+      inPort = base.clone().addScaledVector(a, ports.inY).addScaledVector(b, -(0.62 * B));
+      tEx.copy(b);
+      uIn.copy(b).multiplyScalar(-1).addScaledVector(a, 0.35).normalize();
+    }
+    cyl.push({ i, dir, a, b, s, x, exPort, inPort, tEx, uIn });
   }
   const route = routePipes(H, cyl, B, { radial });
-  return { ...route, sp, n, B, r, l, ch, skirt, hc, hcFull, recess, minGap, deck, pitch, slotInfo, cyl, radial, nIn, nEx };
+  return { ...route, sp, n, B, r, l, ch, skirt, hc, hcFull, recess, minGap, deck, pitch, slotInfo, cyl, radial, nIn, nEx, two, ports };
 }
 
 /** Where every pipe and volume goes, given the engine's ports. `cyl` has one entry per
@@ -158,6 +177,8 @@ function routePipes(H, cyl, B, opt = {}) {
   sp.groups.forEach((grp, g) => {
     const vi = volByName[`collector${g + 1}`];
     if (vi === undefined || !grp.length) return;
+    // a collector no pipe enters (an engine whose every primary ends in open air) is not drawn
+    if (!H.pipes.some((q) => q.kind === 'primary' && q.right.type === 'volume' && q.right.index === vi)) return;
     const mean = new V3(), bm = new V3(), am = new V3();
     // weight toward the cylinders with the shortest pipes, so unequal headers stay drawable
     let wsum = 0;
@@ -262,7 +283,37 @@ function routePipes(H, cyl, B, opt = {}) {
     const end = new V3(ab.x + sgn * side / 2, ab.y, ab.z);
     paths[k] = new THREE.LineCurve3(end.clone().addScaledVector(ex, sgn * p.len), end);
   });
+  // Primaries that end in open air (two-stroke expansion chambers): each drops from its port to its
+  // own lane below and beside the crank, then runs straight back. The pipe from the front cylinder
+  // takes the outermost lane, so no pipe has to cross another; lanes are spaced by the pipes' widest
+  // sections. The straight run is as long as the pipe's physical length requires.
+  const open = pipesOf('primary').filter(({ p }) => p.right.type !== 'volume');
+  if (open.length) {
+    const rmax = (p) => 0.5 * Math.max(...p.dia);
+    const order = open.slice().sort((e1, e2) => cyl[e2.p.cyl].x - cyl[e1.p.cyl].x);   // rear first = innermost
+    const rAll = Math.max(...open.map(({ p }) => rmax(p)));
+    let D = 0;
+    order.forEach(({ p, k }, j) => {
+      const c = cyl[p.cyl], rm = rmax(p);
+      D = j === 0 ? 0.55 * B + rm : D + rm + rmax(order[j - 1].p) + 0.012;
+      const yLane = -(sp.stroke / 2 + 0.3 * B) - 0.5 * rAll;
+      const lane = (X) => new V3(X, 0, 0).addScaledVector(c.b, D).addScaledVector(c.a, yLane);
+      const start = c.exPort, p1 = start.clone().addScaledVector(c.b, 0.05);
+      const x0 = c.x + 0.05;
+      const make = (X) => {
+        const pts = [start, p1, lane(x0), lane(x0 + 0.12)];
+        if (X > x0 + 0.24) pts.push(lane(X));
+        return crv(pts);
+      };
+      let lo = x0 + 0.25, hi = x0 + 0.25 + 2 * p.len;
+      for (let it = 0; it < 40; it++) { const m = 0.5 * (lo + hi); if (make(m).getLength() < p.len) lo = m; else hi = m; }
+      paths[k] = make(0.5 * (lo + hi));
+      startPts[k] = start;
+      endPts[k] = paths[k].getPointAt(1);
+    });
+  }
   pipesOf('primary').forEach(({ p, k }) => {
+    if (p.right.type !== 'volume') return;
     const c = cyl[p.cyl], start = c.exPort, end = primEnd[p.cyl];
     paths[k] = fitCurve((beta) => primaryCurve(c, end, collAxis[p.right.index], collN[p.right.index], p.len, beta), p.len);
     startPts[k] = start;
@@ -509,7 +560,35 @@ function buildCylinder(L, c) {
   // markers used by the consistency checks
   const exMark = new THREE.Object3D(); exMark.position.set(0, deck + 0.12 * B, zEx); g.add(exMark);
   const inMark = new THREE.Object3D(); inMark.position.set(0, deck + 0.12 * B, -zEx); g.add(inMark);
-  return { group: g, piston, glow, glowMat, vin, vex, exMark, inMark };
+  let portMats = null;
+  if (L.two) {
+    for (const v of vin.concat(vex)) g.remove(v);
+    vin.length = 0; vex.length = 0;
+    const P = L.ports;
+    exMark.position.set(0, 0.5 * (P.exTop + P.bottom), c.s * (P.wall + 0.012));
+    inMark.position.set(0, P.inY, -c.s * 0.62 * B);
+    // a port is a window in the liner: a glowing frame and a faint fill, brightened by how far open it is
+    const win = (centre, width, y0, y1, colour) => {
+      const R = P.wall + 0.0015, N = 14, pts = [];
+      const at = (ang, y) => new V3(R * Math.sin(ang), y, R * Math.cos(ang) * c.s);
+      for (let i = 0; i <= N; i++) pts.push(at(centre - width / 2 + width * i / N, y1));
+      for (let i = N; i >= 0; i--) pts.push(at(centre - width / 2 + width * i / N, y0));
+      const frameMat = new THREE.MeshBasicMaterial({ color: colour.clone().multiplyScalar(0.15), toneMapped: true });
+      const frame = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.02), 60, 0.0013, 5, true), frameMat);
+      const fillGeo = new THREE.CylinderGeometry(R, R, y1 - y0, 12, 1, true, centre - width / 2 + (c.s < 0 ? Math.PI : 0), width);
+      const fillMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      const fill = new THREE.Mesh(fillGeo, fillMat);
+      fill.position.y = 0.5 * (y0 + y1);
+      g.add(frame, fill);
+      return { frameMat, fillMat, colour };
+    };
+    const amber = new THREE.Color(1.0, 0.55, 0.15), cyan = new THREE.Color(0.25, 0.75, 1.0);
+    portMats = {
+      ex: [win(0, 1.1, P.bottom, P.exTop, amber)],
+      tr: [win(1.9, 0.75, P.bottom, P.trTop, cyan), win(-1.9, 0.75, P.bottom, P.trTop, cyan)],
+    };
+  }
+  return { group: g, piston, glow, glowMat, vin, vex, exMark, inMark, portMats };
 }
 
 function buildRod(L) {
@@ -994,7 +1073,13 @@ export class EngineModel {
       for (const v of cy.vin) v.position.y = seat - li;
       for (const v of cy.vex) v.position.y = seat - le;
       state.clear = Math.min(state.clear, deck - crown);
-      state.valveClear = Math.min(state.valveClear, seat - Math.max(li, le) - crown);
+      if (cy.portMats) {
+        // on a two-stroke lift_ex / lift_in are the exhaust and transfer ports' open fractions
+        for (const [list, f] of [[cy.portMats.ex, le], [cy.portMats.tr, li]]) for (const pm of list) {
+          pm.frameMat.color.copy(pm.colour).multiplyScalar(0.15 + 1.6 * f);
+          pm.fillMat.color.copy(pm.colour).multiplyScalar(0.35 * f);
+        }
+      } else state.valveClear = Math.min(state.valveClear, seat - Math.max(li, le) - crown);
       const phi = c.dir - ca;
       P.set(c.x, r * Math.cos(phi), r * Math.sin(phi));
       W.set(c.x, dist * Math.cos(c.dir), dist * Math.sin(c.dir));

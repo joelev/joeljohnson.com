@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script>window.__build = "15ca9e5ec7";</script>
+<script>window.__build = "2b9b29fd94";</script>
 <meta name="robots" content="noindex">
 <meta charset="utf-8">
 <title>Engine Synthesizer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=15ca9e5ec7">
-<link rel="stylesheet" href="./style.css?v=15ca9e5ec7">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=2b9b29fd94">
+<link rel="stylesheet" href="./style.css?v=2b9b29fd94">
 <script type="importmap">
 { "imports": {
     "three": "./vendor/three/build/three.module.min.js",
@@ -52,7 +52,7 @@
   <div class="row"><label for="wsHeader">Header length <output id="oHeader"></output></label><input id="wsHeader" type="range" min="50" max="220" step="5" value="100"></div>
   <div class="row"><label for="wsUnequal"><span id="lblUnequal">Unequal headers</span> <output id="oUnequal"></output></label><input id="wsUnequal" type="range" min="-45" max="45" step="5" value="0"></div>
   <div class="row"><label for="wsExhaust">Exhaust length <output id="oExhaust"></output></label><input id="wsExhaust" type="range" min="40" max="220" step="5" value="100"></div>
-  <div class="row"><label for="wsCam">Cam overlap <output id="oCam"></output></label><input id="wsCam" type="range" min="-12" max="32" step="2" value="0"></div>
+  <div class="row"><label for="wsCam"><span id="lblCam">Cam overlap</span> <output id="oCam"></output></label><input id="wsCam" type="range" min="-12" max="32" step="2" value="0"></div>
   <div class="row check"><label><input id="wsMuffler" type="checkbox" checked> Muffler</label></div>
   <div class="row"><button id="wsReset" class="btn wide">Reset to stock</button></div>
 </aside>
@@ -96,7 +96,7 @@
     <h3>Simulated, and drawn from the simulation</h3>
     <ul>
       <li><b>Sound</b>: pressure waves leaving the tailpipes and the intake, from gas flow solved through the cylinders, valves and pipes.</li>
-      <li><b>Crank, pistons, valves</b>: position and lift at true scale.</li>
+      <li><b>Crank, pistons, valves</b>: position and lift at true scale. <b>Rotary engines</b>: the housing bore, the eccentric shaft and the rotor's motion are exact; each of the three chambers glows with its own pressure and burn.</li>
       <li><b>Gas colour in pipes</b>: pressure relative to ambient (blue below, orange to white above; dark at ambient).</li>
       <li><b>Header glow</b>: temperature of the gas inside the exhaust pipes. The metal's own temperature is not simulated.</li>
       <li><b>Cylinder glow and lamps</b>: cylinder pressure, burn rate and gas temperature.</li>
@@ -107,6 +107,7 @@
     <ul>
       <li><b>Overrun flames</b>: shown when the model cuts fuel at speed. Afterfire in the exhaust is not simulated.</li>
       <li><b>Camera shake, floor reflection, glow, vignette</b>.</li>
+      <li><b>Rotor flank shape</b>: a circular arc that stays just clear of the housing, standing in for the real flank and its combustion pocket.</li>
       <li><b>Where the pipes run and what the parts look like</b>: lengths and diameters are the simulated ones; the routing and shapes are a drawing. The picture is stroboscopic, so the engine appears to turn slowly.</li>
     </ul>
     <button id="noteClose" class="btn wide">Close</button>
@@ -123,6 +124,6 @@
   </div>
 </div>
 <div id="err"></div>
-<script type="module" src="./app.js?v=15ca9e5ec7"></script>
+<script type="module" src="./app.js?v=2b9b29fd94"></script>
 </body>
 </html>

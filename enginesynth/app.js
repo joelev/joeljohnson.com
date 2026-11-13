@@ -4,8 +4,8 @@
 // URL parameters: mock=1 (replay recorded telemetry), engine=<preset name>, view=<camera>,
 // quality=auto|light|heavy, orbit=0 (no idle auto-orbit), ui=0 (hide the key hints).
 
-import { LiveScene } from './scene.js?v=15ca9e5ec7';
-import { pressureColor, config } from './engine-model.js?v=15ca9e5ec7';
+import { LiveScene } from './scene.js?v=2b9b29fd94';
+import { pressureColor, config } from './engine-model.js?v=2b9b29fd94';
 
 const Q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -26,12 +26,12 @@ async function boot() {
   let mod;
   S.mock = Q.get('mock') === '1';
   if (!S.mock) {
-    try { mod = await import('./engine.js?v=15ca9e5ec7'); } catch (e) {
+    try { mod = await import('./engine.js?v=2b9b29fd94'); } catch (e) {
       S.mock = true;
       banner('Live engine not available here: replaying a recording instead.');
     }
   }
-  if (S.mock) mod = await import('./mock-engine.js?v=15ca9e5ec7');
+  if (S.mock) mod = await import('./mock-engine.js?v=2b9b29fd94');
   const LiveEngine = mod.LiveEngine;
   S.ctx = new AudioContext({ sampleRate: 48000, latencyHint: 0 }); // 0 = the shortest output buffer the device allows
   S.presets = await LiveEngine.presets();
@@ -72,13 +72,22 @@ function onRebuild() {
   S.scene.setHeader(h);
   S.header = h;
   $('elabel').textContent = sp.label;
-  const litres = Math.PI / 4 * sp.bore * sp.bore * sp.stroke * n * 1000;
-  $('espec').textContent = `${litres.toFixed(litres < 2 ? 2 : 1)} L · ${n} cyl · ${(sp.bore * 1000).toFixed(1)} × ${(sp.stroke * 1000).toFixed(1)} mm · redline ${Math.round(sp.redline)}`;
+  const rotary = h.kind === 'wankel';
+  if (rotary) {
+    // one chamber's displacement; the litre figure is the usual four-stroke equivalent
+    const cc = 3 * Math.sqrt(3) * sp.ecc * sp.rotor_r * sp.rotor_w * 1e6, nr = h.units;
+    $('espec').textContent = `${(nr * cc / 1000).toFixed(1)} L (${nr} × ${Math.round(cc)} cc) · ${nr} rotors · redline ${Math.round(sp.redline)}`;
+  } else {
+    const litres = Math.PI / 4 * sp.bore * sp.bore * sp.stroke * n * 1000;
+    $('espec').textContent = `${litres.toFixed(litres < 2 ? 2 : 1)} L · ${n} cyl · ${(sp.bore * 1000).toFixed(1)} × ${(sp.stroke * 1000).toFixed(1)} mm · redline ${Math.round(sp.redline)}`;
+  }
+  for (const b of document.querySelectorAll('#views button')) b.classList.toggle('on', b.dataset.view === S.scene.viewName);
   const lamps = $('lamps');
   lamps.replaceChildren();
   S.lamps = [];
   S.lampHold = [];
-  for (let i = 0; i < n; i++) { const el = document.createElement('i'); lamps.appendChild(el); S.lamps.push(el); }
+  // rotary: one lamp per chamber, grouped by rotor
+  for (let i = 0; i < n; i++) { const el = document.createElement('i'); if (rotary && i > 0 && i % 3 === 0) el.className = 'g'; lamps.appendChild(el); S.lamps.push(el); }
   S.tachMax = Math.ceil(sp.redline * 1.1 / 1000) * 1000;
   for (const el of document.querySelectorAll('.eng')) el.classList.toggle('on', el.dataset.name === S.name);
   syncWorkshop();
@@ -151,9 +160,10 @@ function buildPicker() {
     b.dataset.name = p.name;
     const n = document.createElement('div');
     n.className = 'n';
-    n.textContent = p.cylinders;
+    const isRotary = p.kind === 'wankel' || p.layout === 'rotary';
+    n.textContent = isRotary ? (p.units || (p.spec && p.spec.rotor_phase ? p.spec.rotor_phase.length : p.cylinders)) : p.cylinders;
     const sm = document.createElement('small');
-    sm.textContent = p.layout === 'inline' ? 'inline' : p.layout === 'flat' ? 'flat' : 'vee';
+    sm.textContent = isRotary ? 'rotary' : p.layout === 'inline' ? 'inline' : p.layout === 'flat' ? 'flat' : 'vee';
     n.appendChild(sm);
     const t = document.createElement('div');
     const l = document.createElement('div');
@@ -195,6 +205,12 @@ function syncWorkshop() {
   const twoBanks = base.layout !== 'inline' && new Set(base.bank).size > 1;
   $('lblUnequal').textContent = twoBanks ? 'Bank-to-bank difference' : 'Unequal headers';
   $('wsUnequal').disabled = S.mock || base.firing.length < 2;
+  const rotary = base.layout === 'rotary';
+  $('wsUnequal').closest('.row').hidden = rotary;
+  $('lblCam').textContent = rotary ? 'Port overlap' : 'Cam overlap';
+  if (!S.mock) $('wsnote').textContent = rotary
+    ? 'Changes rebuild the engine when you let go of a slider. Port overlap moves the exhaust port\'s closing edge later (a wider port) and the intake port\'s opening edge earlier.'
+    : 'Changes rebuild the engine when you let go of a slider.';
   const isV8 = S.name === 'v8_cross' || S.name === 'v8_flat';
   $('rowCrank').hidden = !isV8 || !S.presets.some((p) => p.name === 'v8_flat');
   for (const b of document.querySelectorAll('[data-crank]')) b.classList.toggle('on', b.dataset.crank === S.name);
@@ -208,17 +224,24 @@ function labelWorkshop() {
   $('oUnequal').textContent = `${+$('wsUnequal').value > 0 ? '+' : ''}${$('wsUnequal').value}%`;
   $('oExhaust').textContent = `${$('wsExhaust').value}%`;
   const ov = +$('wsCam').value;
-  $('oCam').textContent = `${Math.round(base.ivo + base.evc + 2 * ov)}°`;
+  $('oCam').textContent = base.layout === 'rotary'
+    ? `${Math.round(base.port_ex[1] - base.port_in[0] + 6 * ov)}°`     // shaft degrees with both ports open to one chamber
+    : `${Math.round(base.ivo + base.evc + 2 * ov)}°`;
 }
 function workshopOverrides() {
   const base = baseSpec();
-  const hs = +$('wsHeader').value / 100, un = +$('wsUnequal').value / 100, es = +$('wsExhaust').value / 100, ov = +$('wsCam').value;
+  const rotary = base.layout === 'rotary';
+  const hs = +$('wsHeader').value / 100, un = rotary ? 0 : +$('wsUnequal').value / 100, es = +$('wsExhaust').value / 100, ov = +$('wsCam').value;
   const twoBanks = base.layout !== 'inline' && new Set(base.bank).size > 1;
   const side = (i) => (twoBanks ? (base.bank[i] === 0 ? 1 : -1) : (i % 2 ? -1 : 1));
   const o = {};
   if (hs !== 1 || un !== 0) o.primary_len = base.primary_len.map((L, i) => +(L * hs * (1 + un * side(i))).toFixed(4));
   if (es !== 1) { o.secondary_len = +(base.secondary_len * es).toFixed(4); o.mid_len = +(base.mid_len * es).toFixed(4); o.tail_len = +(base.tail_len * es).toFixed(4); }
-  if (ov !== 0) { o.ivo = base.ivo + ov; o.evc = base.evc + ov; }
+  if (ov !== 0 && rotary) {
+    // three shaft degrees per step: the exhaust port closes later, the intake port opens earlier
+    o.port_ex = [base.port_ex[0], base.port_ex[1] + 3 * ov];
+    o.port_in = [base.port_in[0] - 3 * ov, base.port_in[1]];
+  } else if (ov !== 0) { o.ivo = base.ivo + ov; o.evc = base.evc + ov; }
   if (base.muffler_len > 0 && !$('wsMuffler').checked) o.muffler_len = 0;
   return o;
 }

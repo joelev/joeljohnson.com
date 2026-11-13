@@ -17,7 +17,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { EngineModel, config } from './engine-model.js?v=15ca9e5ec7';
+import { EngineModel, config } from './engine-model.js?v=2b9b29fd94';
 
 const V3 = THREE.Vector3;
 const RAD = Math.PI / 180;
@@ -168,8 +168,12 @@ export class LiveScene {
     this.emitAcc = this.model.outlets.map(() => 0);
     this.pAge.fill(1e9);
     this.computeViews();
-    if (first) this.setView(this.opts.view || 'engine', true);
-    else this.setView(this.viewName || 'engine', false);
+    // a rotary is best seen end-on; switching between kinds moves to that kind's natural view
+    const kindChanged = this.lastKind !== this.model.kind;
+    this.lastKind = this.model.kind;
+    const natural = this.model.kind === 'wankel' ? 'front' : 'engine';
+    if (first) this.setView(this.opts.view || natural, true);
+    else this.setView(kindChanged ? natural : (this.viewName || natural), false);
   }
 
   computeViews() {
@@ -184,7 +188,9 @@ export class LiveScene {
       engine: { pts: m.ptsCore, target: core.clone().add(new V3(0.2 * engLen, 0, 0)), az: -40, el: 13, bx: narrow ? 0.8 : 0.5, by: [-0.30, 0.31], lift: narrow ? 0.34 : 0.17 },
       wide: { pts: m.ptsAll, target: m.boxAll.getCenter(new V3()), az: -30, el: 18, bx: 0.8, by: [-0.42, 0.5], lift: 0.2 },
       exhaust: { pts: m.ptsAll, target: m.boxAll.getCenter(new V3()), az: 58, el: 12, bx: 0.8, by: [-0.42, 0.5], lift: 0.2 },
-      front: { pts: m.ptsEng, target: boxC, az: -90, el: 5, bx: 0.72, by: [-0.4, 0.45], lift: 0.22 },
+      front: m.kind === 'wankel'
+        ? { pts: m.ptsCore, target: core.clone(), az: -84, el: 5, bx: narrow ? 0.7 : 0.44, by: [-0.44, 0.46], lift: narrow ? 0.3 : 0.2 }
+        : { pts: m.ptsEng, target: boxC, az: -90, el: 5, bx: 0.72, by: [-0.4, 0.45], lift: 0.22 },
       top: { pts: m.ptsEng, target: boxC, az: -20, el: 62, bx: 0.7, by: [-0.4, 0.45], lift: 0.16 },
     };
     const probe = new THREE.PerspectiveCamera(cam.fov, cam.aspect, 0.03, 80);

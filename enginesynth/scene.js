@@ -17,7 +17,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { EngineModel, config } from './engine-model.js?v=2b9b29fd94';
+import { EngineModel, config } from './engine-model.js?v=4a24fb3a02';
 
 const V3 = THREE.Vector3;
 const RAD = Math.PI / 180;
@@ -169,9 +169,10 @@ export class LiveScene {
     this.pAge.fill(1e9);
     this.computeViews();
     // a rotary is best seen end-on; switching between kinds moves to that kind's natural view
-    const kindChanged = this.lastKind !== this.model.kind;
-    this.lastKind = this.model.kind;
-    const natural = this.model.kind === 'wankel' ? 'front' : 'engine';
+    const kindNow = this.model.L.radial ? 'radial' : this.model.kind;
+    const kindChanged = this.lastKind !== kindNow;
+    this.lastKind = kindNow;
+    const natural = this.model.kind === 'wankel' || this.model.L.radial ? 'front' : 'engine';
     if (first) this.setView(this.opts.view || natural, true);
     else this.setView(kindChanged ? natural : (this.viewName || natural), false);
   }

@@ -70,7 +70,8 @@ export function buildLayout(H) {
   let minGap = Infinity;
   for (let c = 0; c < 4 * Math.PI; c += Math.PI / 720) minGap = Math.min(minGap, valveGap(c));
   const margin = 0.0008;
-  const phi = 2 * (sp.in_valve_d * sp.in_valve_d + sp.ex_valve_d * sp.ex_valve_d) / (B * B);
+  const nIn = sp.in_valves === 1 ? 1 : 2, nEx = sp.ex_valves === 1 ? 1 : 2;
+  const phi = (nIn * sp.in_valve_d * sp.in_valve_d + nEx * sp.ex_valve_d * sp.ex_valve_d) / (B * B);
   let recess = 0, hc = hcFull;
   if (hcFull + minGap < margin) {
     recess = Math.min((margin - minGap - hcFull) / (1 - phi), 0.92 * hcFull / phi);
@@ -85,20 +86,27 @@ export function buildLayout(H) {
     const xc = (s - (nslots - 1) / 2) * pitch;
     let type = 'single';
     list.sort((p, q) => sp.bank[p] - sp.bank[q]);
-    if (list.length >= 2) {
+    if (list.length === 2) {
       type = angDiff(H.pin_angle[list[0]], H.pin_angle[list[1]]) < 1 ? 'shared' : 'split';
       const o = type === 'shared' ? 0.105 * B : 0.20 * B;
       xoff[list[0]] = -o;
       xoff[list[1]] = o;
+    } else if (list.length > 2) {
+      // three or more cylinders on one crank position: a radial row. They all sit in one plane
+      // and their rods meet on the one pin (drawn as a hub).
+      type = 'hub';
     }
     return { xc, list, type };
   });
   const inline = sp.layout === 'inline', flat = sp.layout === 'flat';
+  const radial = sp.layout === 'radial' || slotInfo.some((q) => q.type === 'hub');
+  const exX = new V3(1, 0, 0);
   const cyl = [];
   for (let i = 0; i < n; i++) {
-    const dir = H.bank_dir[i] * RAD;
+    // cylinder-axis angle from vertical, brought into -180..180 so its sign says which side it leans to
+    const dir = (((H.bank_dir[i] + 180) % 360 + 360) % 360 - 180) * RAD;
     const a = new V3(0, Math.cos(dir), Math.sin(dir));
-    const s = inline ? 1 : (Math.sign(dir) || 1);
+    const s = inline || radial ? 1 : (Math.sign(dir) || 1);
     const b = new V3(0, -Math.sin(dir) * s, Math.cos(dir) * s);
     const x = slotInfo[sp.slot[i]].xc + xoff[i];
     const base = new V3(x, 0, 0);
@@ -108,16 +116,21 @@ export function buildLayout(H) {
     const uIn = (inline ? a.clone().multiplyScalar(0.6).addScaledVector(b, -0.8)
       : flat ? a.clone().multiplyScalar(0.25).addScaledVector(b, -1)
         : a.clone().addScaledVector(b, -0.35)).normalize();
+    if (radial) {
+      // exhaust leaves on one side of each head and sweeps back; intake comes from a hub behind the crankcase
+      tEx.copy(a).multiplyScalar(0.3).addScaledVector(b, 0.5).addScaledVector(exX, 0.8).normalize();
+      uIn.copy(exX).multiplyScalar(0.75).addScaledVector(a, -0.65).normalize();
+    }
     cyl.push({ i, dir, a, b, s, x, exPort: port(1), inPort: port(-1), tEx, uIn });
   }
-  const route = routePipes(H, cyl, B);
-  return { ...route, sp, n, B, r, l, ch, skirt, hc, hcFull, recess, minGap, deck, pitch, slotInfo, cyl };
+  const route = routePipes(H, cyl, B, { radial });
+  return { ...route, sp, n, B, r, l, ch, skirt, hc, hcFull, recess, minGap, deck, pitch, slotInfo, cyl, radial, nIn, nEx };
 }
 
 /** Where every pipe and volume goes, given the engine's ports. `cyl` has one entry per
  *  cylinder (or rotor): x, a (up along the unit), b (exhaust side), exPort, inPort, tEx, uIn.
  *  `B` is a reference size (the bore) for stub lengths. */
-function routePipes(H, cyl, B) {
+function routePipes(H, cyl, B, opt = {}) {
   const sp = H.spec, n = cyl.length;
   const xMin = Math.min(...cyl.map((c) => c.x)), xMax = Math.max(...cyl.map((c) => c.x));
   const down = new V3(0, -1, 0), ex = new V3(1, 0, 0);
@@ -152,18 +165,20 @@ function routePipes(H, cyl, B) {
     mean.multiplyScalar(1 / wsum);
     bm.normalize();
     // swept back about 30 degrees so the gas leaves heading rearward
-    const axis = bm.clone().addScaledVector(down, 0.8 * (1 - Math.max(0, bm.dot(down)))).normalize().addScaledVector(ex, 0.6).normalize();
+    const axis = opt.radial
+      ? am.clone().normalize().multiplyScalar(0.45).addScaledVector(bm, 0.25).addScaledVector(ex, 1).normalize()   // radial: stacks point back and a little outward
+      : bm.clone().addScaledVector(down, 0.8 * (1 - Math.max(0, bm.dot(down)))).normalize().addScaledVector(ex, 0.6).normalize();
     const row = ex.clone().addScaledVector(axis, -ex.dot(axis)).normalize();
     const nhat = new V3().crossVectors(row, axis).normalize();
     if (nhat.dot(bm.clone().add(am.normalize())) < 0) nhat.negate();
     const m = grp.length, pitchL = 2.9 * rp, ring = 0.5 * (m - 1) * pitchL;
-    const clen = Math.max(0.10, 1.2 * ring);
+    const clen = m === 1 ? 0.05 : Math.max(0.10, 1.2 * ring);
     const order = grp.slice().sort((p, q) => cyl[p].exPort.x - cyl[q].exPort.x);
     const laneOf = {};
     order.forEach((i, j) => { laneOf[i] = row.clone().multiplyScalar(j * pitchL - ring); });
     // as far out as the shortest pipe allows
     let c = mean.clone();
-    for (let D = 0.27; D >= 0.05; D -= 0.01) {
+    for (let D = opt.radial ? 0.6 : 0.27; D >= 0.05; D -= 0.01) {
       c = mean.clone().addScaledVector(axis, D);
       if (grp.every((i) => primaryCurve(cyl[i], c.clone().add(laneOf[i]), axis, nhat, sp.primary_len[i], 0).getLength() <= sp.primary_len[i])) break;
     }
@@ -172,7 +187,7 @@ function routePipes(H, cyl, B) {
     collN[vi] = nhat;
     grp.forEach((i) => { primEnd[i] = c.clone().add(laneOf[i]); });
     volOut[vi] = c.clone().addScaledVector(axis, clen);
-    volShape[vi] = { type: 'fan', a: ring + rp * 1.12, b: rp * 1.2, len: clen, ring, axis, d: row, n: nhat };
+    volShape[vi] = { type: 'fan', a: ring + rp * (m === 1 ? 1.04 : 1.12), b: rp * (m === 1 ? 1.04 : 1.2), len: clen, ring, axis, d: row, n: nhat };
   });
   const collPts = Object.values(volPos);
 
@@ -193,13 +208,27 @@ function routePipes(H, cyl, B) {
       if (cyl.every((c) => Math.hypot(c.inPort.y - cy, c.inPort.z - cz) - R * 0.9 <= 0.88 * sp.runner_len)) break;
     }
     const pc = new V3(0.5 * (xMin + xMax), cy, cz);
+    let plenLen = len, plenR = R;
+    if (opt.radial) {
+      // an induction hub on the crank axis behind the cylinders, as far back as the runners reach
+      plenLen = 0.14;
+      plenR = Math.min(0.12, Math.max(0.04, Math.sqrt(H.volumes[plenumIdx].vol / (Math.PI * plenLen))));
+      pc.set(xMax + 0.8 * sp.runner_len, 0, 0);
+      for (let k = 0; k < 60 && !cyl.every((c) => c.inPort.distanceTo(pc) - plenR * 0.9 <= 0.88 * sp.runner_len); k++) pc.x -= 0.01;
+    }
     volPos[plenumIdx] = pc;
-    volShape[plenumIdx] = { type: 'capsule', r: R, len };
+    volShape[plenumIdx] = { type: 'capsule', r: plenR, len: plenLen, hub: !!opt.radial };
     const ai = volByName.airbox;
     if (ai !== undefined) {
       const side = Math.cbrt(H.volumes[ai].vol);
-      volPos[ai] = new V3(pc.x - len / 2 - R - 0.10 - side / 2, cy, cz);
-      volShape[ai] = { type: 'box', side, neck: { x0: pc.x - len / 2 - R - 0.10, x1: pc.x - len / 2 - R * 0.5, r: sp.throttle_d / 2 } };
+      if (opt.radial) {
+        // air comes in from behind
+        volPos[ai] = new V3(pc.x + plenLen / 2 + plenR + 0.10 + side / 2, pc.y, pc.z);
+        volShape[ai] = { type: 'box', side, rear: true, neck: { x0: pc.x + plenLen / 2 + plenR * 0.5, x1: pc.x + plenLen / 2 + plenR + 0.10, r: sp.throttle_d / 2 } };
+      } else {
+        volPos[ai] = new V3(pc.x - len / 2 - R - 0.10 - side / 2, cy, cz);
+        volShape[ai] = { type: 'box', side, neck: { x0: pc.x - len / 2 - R - 0.10, x1: pc.x - len / 2 - R * 0.5, r: sp.throttle_d / 2 } };
+      }
     }
   }
 
@@ -210,7 +239,7 @@ function routePipes(H, cyl, B) {
     const c = cyl[p.cyl];
     const end = c.inPort;
     if (p.left.type === 'volume' && p.left.index === plenumIdx) {
-      const pc = new V3(c.x, volPos[plenumIdx].y, volPos[plenumIdx].z);
+      const pc = volShape[plenumIdx].hub ? volPos[plenumIdx].clone() : new V3(c.x, volPos[plenumIdx].y, volPos[plenumIdx].z);
       const start = pc.clone().addScaledVector(end.clone().sub(pc).normalize(), volShape[plenumIdx].r * 0.9);
       const p1 = end.clone().addScaledVector(c.uIn, 0.55 * B);
       const w = c.a.clone().multiplyScalar(0.8).addScaledVector(c.b, -0.6).normalize();
@@ -229,8 +258,9 @@ function routePipes(H, cyl, B) {
   });
   pipesOf('snorkel').forEach(({ p, k }) => {
     const ab = volPos[p.right.index], side = volShape[p.right.index].side;
-    const end = new V3(ab.x - side / 2, ab.y, ab.z);
-    paths[k] = new THREE.LineCurve3(end.clone().addScaledVector(ex, -p.len), end);
+    const sgn = volShape[p.right.index].rear ? 1 : -1;
+    const end = new V3(ab.x + sgn * side / 2, ab.y, ab.z);
+    paths[k] = new THREE.LineCurve3(end.clone().addScaledVector(ex, sgn * p.len), end);
   });
   pipesOf('primary').forEach(({ p, k }) => {
     const c = cyl[p.cyl], start = c.exPort, end = primEnd[p.cyl];
@@ -277,7 +307,7 @@ function routePipes(H, cyl, B) {
     paths[k] = fitCurve((beta) => {
       const L = 0.4 * p.len + beta;
       if (ax) {
-        const k1 = s.clone().addScaledVector(ax, 0.07), k2 = s.clone().addScaledVector(ax, 0.13).addScaledVector(ex, 0.12);
+        const k1 = s.clone().addScaledVector(ax, Math.min(0.07, 0.2 * p.len)), k2 = s.clone().addScaledVector(ax, Math.min(0.13, 0.35 * p.len)).addScaledVector(ex, Math.min(0.12, 0.3 * p.len));
         return crv([s, k1, k2, k2.clone().addScaledVector(ex, 0.3 * L), k2.clone().addScaledVector(ex, L)]);
       }
       return crv([s, s.clone().add(new V3(0.12 * L, 0, 0.1 * zoff)), s.clone().add(new V3(0.32 * L, 0, zoff)), s.clone().add(new V3(L, 0, zoff))]);
@@ -410,6 +440,12 @@ function buildCrank(L, H) {
   }
   for (let k = 0; k + 1 < extents.length; k++) g.add(xCyl(Rm, extents[k][1], extents[k + 1][0], steel));
   const xf = extents[0][0], xr = extents[extents.length - 1][1];
+  if (L.radial) {
+    g.add(xCyl(Rm, xf - 0.75 * B, xf, steel));
+    g.add(xCyl(0.42 * B, xf - 0.75 * B, xf - 0.62 * B, darkSteel, 48));
+    g.add(xCyl(Rm, xr, xr + 0.22 * B, steel));
+    return { group: g, pinMarkers, x0: xf - 0.75 * B, x1: xr + 0.22 * B };
+  }
   g.add(xCyl(Rm, xf - 0.40 * B, xf, steel));
   g.add(xCyl(0.5 * B, xf - 0.40 * B, xf - 0.26 * B, darkSteel, 48));
   g.add(xCyl(Rm, xr, xr + 0.42 * B, steel));
@@ -466,8 +502,10 @@ function buildCylinder(L, c) {
     return v;
   };
   const zEx = c.s * 0.2 * B;
-  const vin = [mkValve(sp.in_valve_d, -0.21 * B, -zEx), mkValve(sp.in_valve_d, 0.21 * B, -zEx)];
-  const vex = [mkValve(sp.ex_valve_d, -0.21 * B, zEx), mkValve(sp.ex_valve_d, 0.21 * B, zEx)];
+  // two valves per port side by side, or one larger valve on the centre line
+  const one = (d) => c.s * Math.max(0.2 * B, 0.49 * B - 0.5 * d);
+  const vin = L.nIn === 1 ? [mkValve(sp.in_valve_d, 0, -one(sp.in_valve_d))] : [mkValve(sp.in_valve_d, -0.21 * B, -zEx), mkValve(sp.in_valve_d, 0.21 * B, -zEx)];
+  const vex = L.nEx === 1 ? [mkValve(sp.ex_valve_d, 0, one(sp.ex_valve_d))] : [mkValve(sp.ex_valve_d, -0.21 * B, zEx), mkValve(sp.ex_valve_d, 0.21 * B, zEx)];
   // markers used by the consistency checks
   const exMark = new THREE.Object3D(); exMark.position.set(0, deck + 0.12 * B, zEx); g.add(exMark);
   const inMark = new THREE.Object3D(); inMark.position.set(0, deck + 0.12 * B, -zEx); g.add(inMark);

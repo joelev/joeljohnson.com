@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script>window.__build = "2b9b29fd94";</script>
+<script>window.__build = "4a24fb3a02";</script>
 <meta name="robots" content="noindex">
 <meta charset="utf-8">
 <title>Engine Synthesizer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=2b9b29fd94">
-<link rel="stylesheet" href="./style.css?v=2b9b29fd94">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=4a24fb3a02">
+<link rel="stylesheet" href="./style.css?v=4a24fb3a02">
 <script type="importmap">
 { "imports": {
     "three": "./vendor/three/build/three.module.min.js",
@@ -22,7 +22,10 @@
 <header id="top">
   <div id="brand">
     <div id="title">Engine Synthesizer</div>
-    <div id="elabel">&nbsp;</div>
+    <button id="btnEngines" class="engbtn" aria-haspopup="dialog" aria-expanded="false" title="Choose an engine ( / )">
+      <span id="elabel">&nbsp;</span>
+      <span class="engbtn-go"><span id="curtag" class="tag"></span><span>Engines</span><b id="engcount"></b><i aria-hidden="true">▾</i></span>
+    </button>
     <div id="espec">&nbsp;</div>
   </div>
   <div id="topright">
@@ -38,8 +41,19 @@
   </div>
 </header>
 
-<button id="btnEngines" class="tab left" aria-expanded="true">Engines</button>
-<aside id="engines" class="panel left open"><h2>Engines</h2><div id="enginelist"></div></aside>
+<div id="brScrim" hidden></div>
+<div id="browser" class="browser" role="dialog" aria-label="Engine library" hidden>
+  <div class="br-main">
+    <div class="br-head">
+      <input id="brSearch" type="search" placeholder="Search: name, maker, layout, cylinders" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search engines">
+      <div id="brFilter" class="chips" role="group" aria-label="Show"><button data-f="all" class="on">All</button><button data-f="real">Real</button><button data-f="generic">Generic</button></div>
+      <button id="brClose" class="btn" aria-label="Close engine library">Close</button>
+    </div>
+    <div id="brList" class="br-list"></div>
+    <div id="brFoot"><span id="brCount"></span><span class="brkeys"><kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> load · <kbd>Esc</kbd> close</span></div>
+  </div>
+  <aside id="brDetail" class="br-detail" aria-live="polite"></aside>
+</div>
 
 <button id="btnWorkshop" class="tab right" aria-expanded="false">Workshop</button>
 <aside id="workshop" class="panel right">
@@ -67,7 +81,7 @@
     </div>
   </div>
   <div id="center">
-    <div id="lamprow"><span class="cap">combustion</span><div id="lamps"></div><span id="cut">FUEL CUT</span></div>
+    <div id="lamprow"><span class="cap">combustion</span><div id="lamps"></div><span id="cam" hidden>HIGH CAM</span><span id="cut">FUEL CUT</span></div>
     <canvas id="scope" width="1200" height="150"></canvas>
     <canvas id="spec" width="600" height="160"></canvas>
     <div id="legend">
@@ -124,6 +138,6 @@
   </div>
 </div>
 <div id="err"></div>
-<script type="module" src="./app.js?v=2b9b29fd94"></script>
+<script type="module" src="./app.js?v=4a24fb3a02"></script>
 </body>
 </html>

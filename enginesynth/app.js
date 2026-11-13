@@ -4,8 +4,8 @@
 // URL parameters: mock=1 (replay recorded telemetry), engine=<preset name>, view=<camera>,
 // quality=auto|light|heavy, orbit=0 (no idle auto-orbit), ui=0 (hide the key hints).
 
-import { LiveScene } from './scene.js?v=2b9b29fd94';
-import { pressureColor, config } from './engine-model.js?v=2b9b29fd94';
+import { LiveScene } from './scene.js?v=4a24fb3a02';
+import { pressureColor, config } from './engine-model.js?v=4a24fb3a02';
 
 const Q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -22,16 +22,16 @@ window.__app = S;
 
 // ------------------------------------------------------------------ engine + audio
 async function boot() {
-  S.scene = new LiveScene($('gl'), { view: Q.get('view') || 'engine', idleOrbit: Q.get('orbit') !== '0', preserve: Q.get('preserve') === '1', maxPixelRatio: +Q.get('dpr') || 2 });
+  S.scene = new LiveScene($('gl'), { view: Q.get('view') || undefined, idleOrbit: Q.get('orbit') !== '0', preserve: Q.get('preserve') === '1', maxPixelRatio: +Q.get('dpr') || 2 });
   let mod;
   S.mock = Q.get('mock') === '1';
   if (!S.mock) {
-    try { mod = await import('./engine.js?v=2b9b29fd94'); } catch (e) {
+    try { mod = await import('./engine.js?v=4a24fb3a02'); } catch (e) {
       S.mock = true;
       banner('Live engine not available here: replaying a recording instead.');
     }
   }
-  if (S.mock) mod = await import('./mock-engine.js?v=2b9b29fd94');
+  if (S.mock) mod = await import('./mock-engine.js?v=4a24fb3a02');
   const LiveEngine = mod.LiveEngine;
   S.ctx = new AudioContext({ sampleRate: 48000, latencyHint: 0 }); // 0 = the shortest output buffer the device allows
   S.presets = await LiveEngine.presets();
@@ -89,7 +89,13 @@ function onRebuild() {
   // rotary: one lamp per chamber, grouped by rotor
   for (let i = 0; i < n; i++) { const el = document.createElement('i'); if (rotary && i > 0 && i % 3 === 0) el.className = 'g'; lamps.appendChild(el); S.lamps.push(el); }
   S.tachMax = Math.ceil(sp.redline * 1.1 / 1000) * 1000;
-  for (const el of document.querySelectorAll('.eng')) el.classList.toggle('on', el.dataset.name === S.name);
+  for (const c of document.querySelectorAll('.eng')) c.classList.toggle('on', c.dataset.name === S.name);
+  const tag = $('curtag');
+  tag.className = sp.generic === false ? 'tag real' : 'tag gen';
+  tag.textContent = sp.generic === false ? 'Real' : 'Generic';
+  $('cam').hidden = !(sp.cam_switch_rpm > 0);
+  S.camHigh = false;
+  if (BR.open) renderDetail(S.presets.find((q) => q.name === BR.active));
   syncWorkshop();
 }
 
@@ -150,33 +156,224 @@ async function start() {
   setTimeout(() => { $('start').hidden = true; }, 600);
 }
 
-// ------------------------------------------------------------------ engine picker
-function buildPicker() {
-  const list = $('enginelist');
-  list.replaceChildren();
-  for (const p of S.presets) {
-    const b = document.createElement('button');
-    b.className = 'eng';
-    b.dataset.name = p.name;
-    const n = document.createElement('div');
-    n.className = 'n';
-    const isRotary = p.kind === 'wankel' || p.layout === 'rotary';
-    n.textContent = isRotary ? (p.units || (p.spec && p.spec.rotor_phase ? p.spec.rotor_phase.length : p.cylinders)) : p.cylinders;
-    const sm = document.createElement('small');
-    sm.textContent = isRotary ? 'rotary' : p.layout === 'inline' ? 'inline' : p.layout === 'flat' ? 'flat' : 'vee';
-    n.appendChild(sm);
-    const t = document.createElement('div');
-    const l = document.createElement('div');
-    l.className = 'l';
-    l.textContent = p.label;
-    const s = document.createElement('div');
-    s.className = 's';
-    s.textContent = `${Math.round(p.redline)} rpm${p.itb ? ' · individual throttles' : ''}`;
-    t.append(l, s);
-    b.append(n, t);
-    b.onclick = () => pickEngine(p.name);
-    list.appendChild(b);
+// ------------------------------------------------------------------ engine library
+// A browser for however many engines the simulator carries: grouped by family, searchable,
+// with a details pane (sourced facts, what is estimated, links). Nothing here is a fixed list;
+// families and counts come from the presets.
+const FAMILY_RANK = { single: 1, twin: 2, triple: 3, three: 3, 'inline-four': 4, four: 4, five: 5, 'inline-five': 5, six: 6, 'inline-six': 6, v6: 6.5, eight: 8, 'inline-eight': 8, 'straight-eight': 8, v8: 8.5, v10: 10, v12: 12, w: 12.6, w8: 8.7, w12: 12.6, v16: 16, w16: 16.5, flat: 50, boxer: 50, rotary: 60, wankel: 60, radial: 70 };
+const FAMILY_TITLE = { single: 'Singles', twin: 'Twins', triple: 'Triples', three: 'Triples', 'inline-four': 'Inline-fours', four: 'Fours', five: 'Fives', 'inline-five': 'Fives', six: 'Inline-sixes', 'inline-six': 'Inline-sixes', eight: 'Straight-eights', flat: 'Flat', boxer: 'Flat', rotary: 'Rotary', wankel: 'Rotary', radial: 'Radial', w: 'W' };
+const isRotary = (sp) => sp.layout === 'rotary' || sp.kind === 'wankel';
+const unitsOf = (sp) => (isRotary(sp) ? (sp.rotor_phase || []).length : sp.firing.length);
+const litresOf = (sp) => (isRotary(sp)
+  ? unitsOf(sp) * 3 * Math.sqrt(3) * sp.ecc * sp.rotor_r * sp.rotor_w * 1000
+  : Math.PI / 4 * sp.bore * sp.bore * sp.stroke * sp.firing.length * 1000);
+const fmtL = (l) => (l < 2 ? (l < 1 ? `${Math.round(l * 1000)} cc` : `${l.toFixed(2)} L`) : `${l.toFixed(1)} L`);
+function layoutWord(sp) {
+  if (isRotary(sp)) return 'rotary';
+  if (sp.layout === 'radial') return 'radial';
+  if (sp.layout === 'flat') return 'flat';
+  if (sp.layout === 'w') return 'W';
+  if (sp.layout === 'v') return 'vee';
+  return sp.firing.length === 1 ? 'single' : 'inline';
+}
+function bankSpread(sp) {
+  if (Array.isArray(sp.bank_dirs) && sp.bank_dirs.length > 1) {
+    const d = sp.bank_dirs.map((x) => ((x + 180) % 360 + 360) % 360 - 180);
+    return Math.max(...d) - Math.min(...d);
   }
+  return sp.bank_angle || 0;
+}
+function describeLayout(sp) {
+  const n = unitsOf(sp);
+  if (isRotary(sp)) return `${n}-rotor Wankel`;
+  if (sp.layout === 'radial') return `${n}-cylinder radial, one row`;
+  if (sp.layout === 'flat') return `Flat-${n}`;
+  if (sp.layout === 'w') return `W${n}, ${new Set(sp.bank).size} rows of cylinders`;
+  if (sp.layout === 'v') return `${n === 2 ? 'V-twin' : `V${n}`}, ${Math.round(bankSpread(sp))}° between banks`;
+  return n === 1 ? 'Single cylinder' : `Inline-${n}`;
+}
+const familyKey = (p) => String(p.spec.family || p.spec.layout || 'other').trim();
+function familyGroups(list) {
+  const groups = new Map();
+  for (const p of list) { const k = familyKey(p); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); }
+  const rank = (k, members) => {
+    const key = k.toLowerCase().replace(/\s+/g, '-');
+    if (key in FAMILY_RANK) return FAMILY_RANK[key];
+    const lay = members[0].spec.layout;
+    if (members.every((m) => m.spec.layout === lay)) { if (lay === 'flat') return 50; if (isRotary(members[0].spec)) return 60; if (lay === 'radial') return 70; }
+    return Math.min(...members.map((m) => unitsOf(m.spec))) + 0.9;      // unknown family: by cylinder count
+  };
+  return [...groups.entries()].map(([k, members]) => ({ key: k, title: FAMILY_TITLE[k.toLowerCase()] || (k.length <= 3 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1)), members, rank: rank(k, members) }))
+    .sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title));
+}
+function haystack(p) {
+  const sp = p.spec, n = unitsOf(sp);
+  return [p.label, p.name, sp.family, sp.based_on, layoutWord(sp), describeLayout(sp), `${n} cylinder ${n}cyl ${n}-cyl`, sp.layout === 'v' ? `v${n}` : '', sp.layout === 'inline' ? `i${n} l${n} straight` : '', sp.layout === 'flat' ? 'boxer' : '', isRotary(sp) ? 'wankel rotor' : '', sp.generic === false ? 'real' : 'generic invented', sp.itb ? 'individual throttles itb' : '', sp.cam_switch_rpm > 0 ? 'cam switching vtec' : '']
+    .join(' ').toLowerCase();
+}
+const BR = { open: false, filter: 'all', q: '', active: null, shown: [] };
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+const isPhone = () => window.matchMedia('(max-width: 900px)').matches;
+const tagFor = (sp) => (sp.generic === false ? el('span', 'tag real', 'Real') : el('span', 'tag gen', 'Generic'));
+
+function buildPicker() {
+  for (const p of S.presets) p._hay = haystack(p);
+  $('engcount').textContent = S.presets.length;
+  $('btnEngines').onclick = () => (BR.open ? closeBrowser() : openBrowser());
+  $('brClose').onclick = closeBrowser;
+  $('brScrim').onclick = closeBrowser;
+  $('brSearch').addEventListener('input', () => { BR.q = $('brSearch').value; renderList(); });
+  for (const b of document.querySelectorAll('#brFilter button')) b.onclick = () => {
+    BR.filter = b.dataset.f;
+    for (const o of document.querySelectorAll('#brFilter button')) o.classList.toggle('on', o === b);
+    renderList();
+  };
+  renderList();
+}
+function renderList() {
+  const words = BR.q.toLowerCase().split(/\s+/).filter(Boolean);
+  const list = S.presets.filter((p) => (BR.filter === 'all' || (BR.filter === 'real') === (p.spec.generic === false)) && words.every((w) => (p._hay || (p._hay = haystack(p))).includes(w)));
+  const box = $('brList');
+  box.replaceChildren();
+  BR.shown = [];
+  for (const g of familyGroups(list)) {
+    const h = el('h3', '', g.title);
+    h.appendChild(el('span', '', String(g.members.length)));
+    const grid = el('div', 'br-grid');
+    for (const p of g.members) {
+      const sp = p.spec;
+      const b = el('button', 'eng');
+      b.dataset.name = p.name;
+      b.type = 'button';
+      const n = el('div', 'n', String(unitsOf(sp)));
+      n.appendChild(el('small', '', layoutWord(sp)));
+      const t = el('div');
+      t.append(el('div', 'l', p.label), el('div', 's', sp.generic === false ? (sp.based_on || 'Real engine') : `${fmtL(litresOf(sp))} · ${Math.round(sp.redline)} rpm`));
+      const side = el('div', 'side');
+      side.appendChild(tagFor(sp));
+      const info = el('span', 'info', 'i');
+      info.setAttribute('role', 'button');
+      info.setAttribute('aria-label', `Details for ${p.label}`);
+      info.onclick = (e) => { e.stopPropagation(); setActive(p.name, false); $('browser').classList.add('detail'); };
+      side.appendChild(info);
+      b.append(n, t, side);
+      b.classList.toggle('on', p.name === S.name);
+      b.onclick = () => { setActive(p.name, false); pickEngine(p.name).then(() => { if (isPhone()) closeBrowser(); }); };
+      b.onmouseenter = () => { if (!isPhone()) setActive(p.name, false); };
+      b.onfocus = () => setActive(p.name, false);
+      grid.appendChild(b);
+      BR.shown.push(p.name);
+    }
+    box.append(h, grid);
+  }
+  if (!list.length) box.appendChild(el('p', 'hint', 'No engine matches that search.'));
+  $('brCount').textContent = list.length === S.presets.length ? `${list.length} engines` : `${list.length} of ${S.presets.length} engines`;
+  if (!BR.shown.includes(BR.active)) BR.active = BR.shown.includes(S.name) ? S.name : (BR.shown[0] || null);
+  setActive(BR.active, false);
+}
+function setActive(name, scroll = true) {
+  BR.active = name;
+  for (const c of document.querySelectorAll('#brList .eng')) {
+    const on = c.dataset.name === name;
+    c.classList.toggle('active', on);
+    if (on && scroll) c.scrollIntoView({ block: 'nearest' });
+  }
+  renderDetail(S.presets.find((p) => p.name === name));
+}
+function renderDetail(p) {
+  const box = $('brDetail');
+  box.replaceChildren();
+  if (!p) return;
+  const sp = p.spec, n = unitsOf(sp), real = sp.generic === false;
+  const back = el('button', 'btn back', '← All engines');
+  back.onclick = () => $('browser').classList.remove('detail');
+  box.append(back, tagFor(sp), el('h2', '', p.label));
+  box.appendChild(el('div', 'based', real ? (sp.based_on || 'A real engine') : 'An invented, typical engine of this layout'));
+  const dl = el('dl');
+  const row = (k, v) => { if (v !== null && v !== undefined && v !== '') dl.append(el('dt', '', k), el('dd', '', v)); };
+  row('Layout', describeLayout(sp));
+  if (isRotary(sp)) {
+    row('Displacement', `${fmtL(litresOf(sp))} (${n} × ${Math.round(litresOf(sp) / n * 1000)} cc)`);
+    row('Rotor', `R ${(sp.rotor_r * 1000).toFixed(0)} mm, e ${(sp.ecc * 1000).toFixed(0)} mm, width ${(sp.rotor_w * 1000).toFixed(0)} mm`);
+  } else {
+    row('Displacement', fmtL(litresOf(sp)));
+    row('Bore × stroke', `${(sp.bore * 1000).toFixed(1)} × ${(sp.stroke * 1000).toFixed(1)} mm`);
+    row('Valves per cylinder', String((sp.in_valves === 1 ? 1 : 2) + (sp.ex_valves === 1 ? 1 : 2)));
+  }
+  row('Compression', `${(+sp.cr).toFixed(1)} : 1`);
+  row('Redline', `${Math.round(sp.redline)} rpm`);
+  row('Idle', `${Math.round(sp.idle)} rpm`);
+  row('Intake', sp.itb ? 'individual throttles' : 'one throttle, plenum');
+  if (sp.cam_switch_rpm > 0) row('Cam switch', `${Math.round(sp.cam_switch_rpm)} rpm`);
+  box.appendChild(dl);
+  const pub = sp.published;
+  if (pub && (pub.power_kw || pub.torque_nm)) {
+    box.appendChild(el('h4', '', 'Published figures'));
+    const d2 = el('dl');
+    if (pub.power_kw) d2.append(el('dt', '', 'Power'), el('dd', '', `${Math.round(pub.power_kw)} kW (${Math.round(pub.power_kw * 1.341)} hp)${pub.power_rpm ? ` at ${Math.round(pub.power_rpm)}` : ''}`));
+    if (pub.torque_nm) d2.append(el('dt', '', 'Torque'), el('dd', '', `${Math.round(pub.torque_nm)} N·m${pub.torque_rpm ? ` at ${Math.round(pub.torque_rpm)}` : ''}`));
+    box.appendChild(d2);
+  }
+  if (sp.notes) { box.appendChild(el('h4', '', real ? 'What is estimated' : 'About this engine')); box.appendChild(el('p', '', sp.notes)); }
+  if (Array.isArray(sp.sources) && sp.sources.length) {
+    box.appendChild(el('h4', '', 'Sources'));
+    const ul = el('ul');
+    for (const src of sp.sources) {
+      if (!src || !/^https?:\/\//i.test(src.url || '')) continue;
+      const li = el('li'), a = el('a', '', src.what || src.url);
+      a.href = src.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      let host = '';
+      try { host = new URL(src.url).hostname.replace(/^www\./, ''); } catch (e) { /* shown without a host */ }
+      li.append(a, el('small', '', host));
+      ul.appendChild(li);
+    }
+    box.appendChild(ul);
+  }
+  const actions = el('div', 'actions');
+  if (p.name === S.name) actions.appendChild(el('span', 'hint', 'Running now'));
+  else { const go = el('button', 'btn on wide', 'Load this engine'); go.onclick = () => pickEngine(p.name).then(() => { if (isPhone()) closeBrowser(); else renderDetail(p); }); actions.appendChild(go); }
+  box.appendChild(actions);
+}
+function openBrowser() {
+  BR.open = true;
+  $('browser').hidden = false;
+  $('brScrim').hidden = false;
+  $('browser').classList.remove('detail');
+  $('btnEngines').setAttribute('aria-expanded', 'true');
+  $('workshop').classList.remove('open');
+  $('btnWorkshop').setAttribute('aria-expanded', 'false');
+  BR.active = S.name;
+  renderList();
+  setActive(BR.shown.includes(S.name) ? S.name : BR.shown[0], true);
+  if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) $('brSearch').focus();   // no on-screen keyboard popping up on touch
+}
+function closeBrowser() {
+  BR.open = false;
+  $('browser').hidden = true;
+  $('brScrim').hidden = true;
+  $('btnEngines').setAttribute('aria-expanded', 'false');
+  if (document.activeElement && $('browser').contains(document.activeElement)) document.activeElement.blur();
+}
+/** Keys that belong to the library. Returns true when the engine controls must not see the key. */
+function browserKey(e) {
+  if (!BR.open) {
+    if (e.key === '/' && !(e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) && S.presets.length) { e.preventDefault(); openBrowser(); return true; }
+    return false;
+  }
+  if (e.key === 'Escape') { if ($('browser').classList.contains('detail')) $('browser').classList.remove('detail'); else closeBrowser(); return true; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const i = BR.shown.indexOf(BR.active), j = clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, BR.shown.length - 1);
+    if (BR.shown.length) setActive(BR.shown[j], true);
+    return true;
+  }
+  if (e.key === 'Enter' && BR.active && !(e.target && e.target.tagName === 'BUTTON' && !e.target.classList.contains('eng'))) {
+    e.preventDefault();
+    const name = BR.active;
+    pickEngine(name).then(() => { if (isPhone()) closeBrowser(); else setActive(name, false); });
+    return true;
+  }
+  return true;
 }
 
 async function pickEngine(name, overrides = {}) {
@@ -195,6 +392,13 @@ function baseSpec() {
   const p = S.presets.find((q) => q.name === S.name);
   return (p && p.spec) || (S.header && S.header.spec);
 }
+/** Which side of the engine a cylinder's bank leans to (+1 or -1), from its bank direction. Works for V, flat and W. */
+function sideOf(base, i) {
+  const dirs = Array.isArray(base.bank_dirs) && base.bank_dirs.length ? base.bank_dirs : null;
+  const d = dirs ? dirs[base.bank[i]] : (base.bank[i] === 0 ? -1 : 1);
+  return (((d + 180) % 360 + 360) % 360 - 180) < 0 ? 1 : -1;
+}
+const hasSides = (base) => base.layout !== 'inline' && base.layout !== 'radial' && base.layout !== 'rotary' && new Set(base.firing.map((_, i) => sideOf(base, i))).size > 1;
 function syncWorkshop() {
   const base = baseSpec();
   if (!base) return;
@@ -202,11 +406,12 @@ function syncWorkshop() {
   $('wsHeader').value = v.header; $('wsUnequal').value = v.unequal; $('wsExhaust').value = v.exhaust; $('wsCam').value = v.cam;
   $('wsMuffler').checked = v.muffler;
   $('wsMuffler').disabled = S.mock || !(base.muffler_len > 0);
-  const twoBanks = base.layout !== 'inline' && new Set(base.bank).size > 1;
-  $('lblUnequal').textContent = twoBanks ? 'Bank-to-bank difference' : 'Unequal headers';
+  const twoBanks = hasSides(base);
+  $('lblUnequal').textContent = twoBanks ? 'Side-to-side difference' : 'Unequal headers';
   $('wsUnequal').disabled = S.mock || base.firing.length < 2;
   const rotary = base.layout === 'rotary';
-  $('wsUnequal').closest('.row').hidden = rotary;
+  // a radial has no banks or sides to set against each other, and a rotary has one header per rotor
+  $('wsUnequal').closest('.row').hidden = rotary || base.layout === 'radial';
   $('lblCam').textContent = rotary ? 'Port overlap' : 'Cam overlap';
   if (!S.mock) $('wsnote').textContent = rotary
     ? 'Changes rebuild the engine when you let go of a slider. Port overlap moves the exhaust port\'s closing edge later (a wider port) and the intake port\'s opening edge earlier.'
@@ -231,9 +436,9 @@ function labelWorkshop() {
 function workshopOverrides() {
   const base = baseSpec();
   const rotary = base.layout === 'rotary';
-  const hs = +$('wsHeader').value / 100, un = rotary ? 0 : +$('wsUnequal').value / 100, es = +$('wsExhaust').value / 100, ov = +$('wsCam').value;
-  const twoBanks = base.layout !== 'inline' && new Set(base.bank).size > 1;
-  const side = (i) => (twoBanks ? (base.bank[i] === 0 ? 1 : -1) : (i % 2 ? -1 : 1));
+  const hs = +$('wsHeader').value / 100, un = rotary || base.layout === 'radial' ? 0 : +$('wsUnequal').value / 100, es = +$('wsExhaust').value / 100, ov = +$('wsCam').value;
+  const twoBanks = hasSides(base);
+  const side = (i) => (twoBanks ? sideOf(base, i) : (i % 2 ? -1 : 1));
   const o = {};
   if (hs !== 1 || un !== 0) o.primary_len = base.primary_len.map((L, i) => +(L * hs * (1 + un * side(i))).toFixed(4));
   if (es !== 1) { o.secondary_len = +(base.secondary_len * es).toFixed(4); o.mid_len = +(base.mid_len * es).toFixed(4); o.tail_len = +(base.tail_len * es).toFixed(4); }
@@ -270,6 +475,7 @@ function setMode(m) {
 }
 function initControls() {
   window.addEventListener('keydown', (e) => {
+    if (browserKey(e)) return;
     if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName) && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
     if (THR_KEYS.has(e.code) || BRAKE_KEYS.has(e.code)) e.preventDefault();
     if (e.repeat) return;
@@ -314,9 +520,7 @@ function initControls() {
     for (const o of document.querySelectorAll('#views button')) o.classList.toggle('on', o === b);
   };
   const toggle = (btn, panel) => () => { const open = !panel.classList.contains('open'); panel.classList.toggle('open', open); btn.setAttribute('aria-expanded', String(open)); };
-  $('btnEngines').onclick = toggle($('btnEngines'), $('engines'));
-  $('btnWorkshop').onclick = toggle($('btnWorkshop'), $('workshop'));
-  if (window.innerWidth < 900) { $('engines').classList.remove('open'); $('btnEngines').setAttribute('aria-expanded', 'false'); }
+  $('btnWorkshop').onclick = () => { if (BR.open) closeBrowser(); toggle($('btnWorkshop'), $('workshop'))(); };
   if (Q.get('ui') === '0') $('keys').hidden = true;
 }
 function toggleAuto() {
@@ -504,6 +708,12 @@ function loop(now) {
     $('rPower').textContent = Math.round(kw);
     $('rHp').textContent = Math.round(kw * 1.341);
     $('cut').style.visibility = cut ? 'visible' : 'hidden';
+    const sw = h.spec.cam_switch_rpm || 0;
+    if (sw > 0) {
+      // the simulator switches cylinder by cylinder at the next firing TDC; this lamp follows engine speed with the same hysteresis
+      if (rpm >= sw) S.camHigh = true; else if (rpm < sw - (h.spec.cam_switch_hyst || 300)) S.camHigh = false;
+      $('cam').classList.toggle('on', !!S.camHigh);
+    }
     const co = h.cyl_offset;
     for (let k = 0; k < S.lamps.length; k++) {
       // hold each flash briefly so a single frame of combustion is still seen

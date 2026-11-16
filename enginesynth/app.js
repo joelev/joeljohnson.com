@@ -1,6 +1,11 @@
 // Engine Synthesizer: the playable page. Wires the engine (real WebAssembly simulator, or the
 // replay mock with ?mock=1) to the 3D scene, the instruments and the controls.
 //
+// Engine pages: the published build (tools/build_site.py) has a page per engine at e/<id>/, the same
+// page with a base tag pointing two folders up and <meta name="engine" content="<id>">; that meta tag picks the
+// engine ahead of ?engine=. In that build (window.__enginePages) Share copies <site root>/e/<id>/ and
+// the address bar follows the running engine there; on the development server it stays ?engine=.
+//
 // URL parameters: mock=1 (replay recorded telemetry), engine=<preset name>, view=<camera>,
 // quality=auto|light|heavy, orbit=0 (no idle auto-orbit), waves=0 or off (plain grid floor, no sound picture),
 // firstrun=1 (force the first-run teaching sequence) or 0 (skip it), ui=0 (no teaching cues either;
@@ -14,12 +19,17 @@
 // click or tap on the space-bar key cap), which iOS needs; the engine is then created on the audio
 // thread. That key cap stays where it is and is the throttle from then on.
 
-import { LiveScene } from './scene.js?v=7a5737f0f1';
-import { pressureColor, config } from './engine-model.js?v=7a5737f0f1';
-import { FirstRun } from './firstrun.js?v=7a5737f0f1';
-import { SpectroSource, LiveSpectro } from './spectro.js?v=7a5737f0f1';
+import { LiveScene } from './scene.js?v=9f587c7303';
+import { pressureColor, config } from './engine-model.js?v=9f587c7303';
+import { FirstRun } from './firstrun.js?v=9f587c7303';
+import { SpectroSource, LiveSpectro } from './spectro.js?v=9f587c7303';
 
 const Q = new URLSearchParams(location.search);
+const PAGE_ENGINE = (document.querySelector('meta[name="engine"]') || {}).content || null;
+const ENGINE_PAGES = window.__enginePages === true;
+/** The folder the app is served from: the base href on an engine page, the page's own folder at the root. */
+const SITE_ROOT = new URL('./', document.baseURI);
+const enginePage = (name) => new URL(`e/${encodeURIComponent(name)}/`, SITE_ROOT);
 const $ = (id) => document.getElementById(id);
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const showError = (e) => { $('err').textContent = String((e && e.stack) || e); console.error(e); };
@@ -147,7 +157,8 @@ async function boot() {
   requestAnimationFrame(loop);
   S.mock = Q.get('mock') === '1';
   let mod;
-  try { mod = await import(S.mock ? './mock-engine.js?v=7a5737f0f1' : './engine.js?v=7a5737f0f1'); } catch (e) { loadFailed('The engine simulator could not be loaded', e); return; }
+  // ?capture=1: the simulator stepped on the main thread for offline video (live/capture-engine.js; not shipped in the public build)
+  try { mod = await import(Q.get('capture') === '1' ? './capture-engine.js' : S.mock ? './mock-engine.js?v=9f587c7303' : './engine.js?v=9f587c7303'); } catch (e) { loadFailed('The engine simulator could not be loaded', e); return; }
   const LiveEngine = S.LiveEngine = mod.LiveEngine;
   setLoad(0.3);
   if (+Q.get('slow') > 1) LiveEngine.slow = Math.round(+Q.get('slow'));
@@ -159,7 +170,7 @@ async function boot() {
   // Draw an engine before the benchmark, so the floor is there to spread while the rest loads: the
   // one asked for, or the first choice. If the benchmark then says this device needs a lighter
   // default, that one is drawn instead.
-  const want = Q.get('engine');
+  const want = PAGE_ENGINE || Q.get('engine');
   if (want && !presetOf(want)) S.unknownEngine = want;
   let first = presetOf(want) ? want : PREFERRED.find(presetOf) || S.presets[0].name;
   const draw = async (name) => { if (LiveEngine.preview) await showPreview(name, {}); };
@@ -259,10 +270,18 @@ function showHeader(h) {
   syncWorkshop();
 }
 
-/** Keep ?engine= in the address bar in step with the running engine, so a reload or a copied URL keeps it. */
+/** Keep the address bar in step with the running engine, so a reload or a copied URL keeps it: the
+ * engine's own page e/<id>/ in the published build (other parameters kept, ?engine= dropped), else ?engine=. */
 function setUrlEngine(name) {
   try {
     const u = new URL(location.href);
+    if (ENGINE_PAGES && presetOf(name)) {
+      const p = enginePage(name);
+      u.searchParams.delete('engine');
+      p.search = u.search; p.hash = u.hash;
+      if (p.href !== location.href) history.replaceState(null, '', p);
+      return;
+    }
     if (u.searchParams.get('engine') === name) return;
     u.searchParams.set('engine', name);
     history.replaceState(null, '', u);
@@ -346,6 +365,8 @@ async function startEngine(resumed) {
   master.connect(S.analyser);
   // the spectrum of the sound being played, for the spectrogram widget and the floor
   S.spectrum = new SpectroSource(S.ctx, master);
+  // offline capture: no sound is played, so the oscilloscope and the spectrum read the computed samples instead
+  if (S.engine.tap) { S.analyser = S.engine.tap.analyser; S.spectrum = S.engine.tap.spectrum; }
   S.scene.setSpectrum(S.spectrum);
   // every visit starts in Drive with automatic shifting, at rest: the first hold of the throttle pulls away
   S.engine.setMode(S.mode);
@@ -894,6 +915,7 @@ function initFuel() {
 
 // ------------------------------------------------------------------ share
 function shareUrl() {
+  if (ENGINE_PAGES && presetOf(S.name)) return enginePage(S.name).toString();
   const u = new URL(location.href);
   u.search = '';
   u.hash = '';

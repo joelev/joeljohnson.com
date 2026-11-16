@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en" class="skin-default">
+<head>
+<base href="../../">
+<script>window.__build = "9f587c7303"; window.__enginePages = true;</script>
+<meta charset="utf-8">
+<title>Subaru EJ253 2.5 L flat-four (i-AVLS, unequal-length manifold) · Engine Synthesizer</title>
+<meta name="engine" content="subaru_ej253">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="description" content="4 cylinders, 99.5 x 79 mm bore and stroke, 6,200 rpm redline. Sound computed from the pressure waves in a simulated engine. No recordings.">
+<meta name="theme-color" content="#04050a">
+<!-- link previews: tools/build_site.py --url makes og:image absolute and adds og:url and the canonical link -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://joeljohnson.com/enginesynth/e/subaru_ej253/">
+<link rel="canonical" href="https://joeljohnson.com/enginesynth/e/subaru_ej253/">
+<meta property="og:site_name" content="Engine Synthesizer">
+<meta property="og:title" content="Subaru EJ253 2.5 L flat-four (i-AVLS, unequal-length manifold) · Engine Synthesizer">
+<meta property="og:description" content="4 cylinders, 99.5 x 79 mm bore and stroke, 6,200 rpm redline. Sound computed from the pressure waves in a simulated engine. No recordings.">
+<meta property="og:image" content="https://joeljohnson.com/enginesynth/og/subaru_ej253.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Subaru EJ253 2.5 L flat-four (i-AVLS, unequal-length manifold) drawn in 3D, its pipes glowing with the gas pressure inside them">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Subaru EJ253 2.5 L flat-four (i-AVLS, unequal-length manifold) · Engine Synthesizer">
+<meta name="twitter:description" content="4 cylinders, 99.5 x 79 mm bore and stroke, 6,200 rpm redline. Sound computed from the pressure waves in a simulated engine. No recordings.">
+<meta name="twitter:image" content="https://joeljohnson.com/enginesynth/og/subaru_ej253.jpg">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=9f587c7303">
+<link rel="stylesheet" href="./style.css?v=9f587c7303">
+<link rel="stylesheet" href="./controls.css?v=9f587c7303">
+<script type="importmap">
+{ "imports": {
+    "three": "./vendor/three/build/three.module.min.js",
+    "three/addons/": "./vendor/three/jsm/"
+} }
+</script>
+</head>
+<body class="pre">
+<canvas id="gl"></canvas>
+<div id="vignette"></div>
+
+<header id="top">
+  <div id="brand">
+    <div id="titlerow"><div id="title">Engine Synthesizer</div><span id="credit" class="credit">Time Stolen by <a href="https://joeljohnson.com" target="_blank" rel="noopener">Joel Johnson</a></span></div>
+    <button id="btnEngines" class="engbtn" aria-haspopup="dialog" aria-expanded="false" title="Choose an engine ( / )">
+      <span id="elabel">&nbsp;</span>
+      <span class="engbtn-go"><span id="curtag" class="tag"></span><span>Engines</span><b id="engcount"></b><i aria-hidden="true">▾</i></span>
+    </button>
+    <div id="engstep" role="group" aria-label="Previous or next engine"><button id="btnPrevEng" class="key mini" aria-label="Previous engine (left arrow)">◀</button><button id="btnNextEng" class="key mini" aria-label="Next engine (right arrow)">▶</button></div>
+    <div id="espec">&nbsp;</div>
+  </div>
+  <div id="topright">
+    <div id="views" class="chips" role="group" aria-label="Camera">
+      <button data-view="engine" class="on">Engine</button>
+      <button data-view="wide">Wide</button>
+      <button data-view="exhaust">Tailpipe</button>
+      <button data-view="front">End-on</button>
+      <button data-view="top">Above</button>
+    </div>
+    <div class="chips" role="group" aria-label="Overlays"><button id="btnWaves" class="on" aria-pressed="true" title="The sound drawn on the floor">Sound waves</button></div>
+    <div id="load" class="pill" title="Share of real time the audio thread spends simulating"><span>audio thread</span><b id="loadval">--</b><i id="quality"></i></div>
+    <button id="btnShare" class="pill btn ico" title="Copy a link to this engine" aria-label="Share: copy a link to this engine"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Share</span></button>
+    <button id="btnInfo" class="pill btn ico" title="About this app and what is simulated" aria-label="About this app and what is simulated"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v4M8 4.6v.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>About</span></button>
+  </div>
+</header>
+
+<div id="brScrim" hidden></div>
+<div id="browser" class="browser" role="dialog" aria-label="Engine library" hidden>
+  <div class="br-main">
+    <div class="br-head">
+      <input id="brSearch" type="search" placeholder="Search: name, maker, layout, cylinders" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search engines">
+      <div id="brFilter" class="chips" role="group" aria-label="Show"><button data-f="all" class="on">All</button><button data-f="real">Real</button><button data-f="generic">Generic</button></div>
+      <button id="brClose" class="btn on" aria-label="Close engine library">Done</button>
+    </div>
+    <div id="brList" class="br-list"></div>
+    <div id="brFoot"><span id="brCount"></span><span class="brkeys"><kbd>←</kbd><kbd>→</kbd> previous, next · <kbd>Esc</kbd> done</span></div>
+  </div>
+  <aside id="brDetail" class="br-detail" aria-live="polite"></aside>
+</div>
+
+<button id="btnWorkshop" class="tab right" aria-expanded="false">Workshop</button>
+<aside id="workshop" class="panel right">
+  <h2>Workshop</h2>
+  <p class="hint" id="wsnote">Changes rebuild the engine when you let go of a slider.</p>
+  <div class="row seg" id="rowCrank" hidden>
+    <label>Crankshaft</label>
+    <div class="segs"><button data-crank="v8_cross">Cross-plane</button><button data-crank="v8_flat">Flat-plane</button></div>
+  </div>
+  <div class="row"><label for="wsHeader"><span id="lblHeader">Header length</span> <output id="oHeader"></output></label><input id="wsHeader" type="range" min="50" max="220" step="5" value="100"></div>
+  <div class="row"><label for="wsUnequal"><span id="lblUnequal">Unequal headers</span> <output id="oUnequal"></output></label><input id="wsUnequal" type="range" min="-45" max="45" step="5" value="0"></div>
+  <div class="row"><label for="wsExhaust">Exhaust length <output id="oExhaust"></output></label><input id="wsExhaust" type="range" min="40" max="220" step="5" value="100"></div>
+  <div class="row"><label for="wsCam"><span id="lblCam">Cam overlap</span> <output id="oCam"></output></label><input id="wsCam" type="range" min="-12" max="32" step="2" value="0"></div>
+  <div class="row check"><label><input id="wsMuffler" type="checkbox" checked> Muffler</label></div>
+  <div id="fuel" hidden>
+    <h2 class="sub">Fueling</h2>
+    <div class="row"><label for="fuMix">Mixture <output id="oMix"></output></label><input id="fuMix" type="range" min="0.7" max="1.3" step="0.02" value="1"><p class="hint">Fuel to air: lean to the left, rich to the right, chemically correct in the middle.</p></div>
+    <div class="row"><label for="fuOver">Overrun fuel <output id="oOver"></output></label><input id="fuOver" type="range" min="0" max="1" step="0.05" value="0"><p class="hint">Fuel kept on with the throttle shut at speed; it burns late, in the exhaust.</p></div>
+    <div class="row" id="rowPops"><label for="fuPops">Lift-off pops <output id="oPops"></output></label><input id="fuPops" type="range" min="0" max="1" step="0.05" value="0"><p class="hint">A few bangs when you lift off after working it hard.</p></div>
+    <div class="row seg"><label>Rev limiter</label><div class="segs"><button data-limiter="fuel" class="on">Fuel cut</button><button data-limiter="spark">Spark cut</button></div><p class="hint">Spark cut still feeds fuel, which reaches the hot exhaust unburnt.</p></div>
+  </div>
+  <div class="row"><button id="wsReset" class="btn wide">Reset to stock</button></div>
+</aside>
+
+<section id="dash">
+  <div id="cluster">
+    <canvas id="tach" width="560" height="560"></canvas>
+    <div id="readouts">
+      <div><b id="rTorque">0</b><span>N·m</span></div>
+      <div><b id="rPower">0</b><span>kW</span></div>
+      <div><b id="rHp">0</b><span>hp</span></div>
+    </div>
+  </div>
+  <!-- The controls are their keys. Layout lives in controls.css part 2; every colour, font and
+       surface is a custom property on the skin class of <html> (controls.css part 1). -->
+  <div id="kb" class="kb" role="group" aria-label="Controls">
+    <div class="k-deck" aria-hidden="true"></div>
+    <div id="pedal" class="k-nums" role="slider" aria-label="Throttle" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <span class="key num" data-n="1">1</span><span class="key num" data-n="2">2</span><span class="key num" data-n="3">3</span><span class="key num" data-n="4">4</span><span class="key num" data-n="5">5</span><span class="key num" data-n="6">6</span><span class="key num" data-n="7">7</span><span class="key num" data-n="8">8</span><span class="key num" data-n="9">9</span><span class="key num" data-n="10">0</span>
+    </div>
+    <div id="kLetters" class="k-letters">
+      <button id="btnDown" class="key k-shift" aria-label="Shift down (Q)"><b>Q</b><i>down</i></button>
+      <div id="gear" class="k-gear" aria-label="Gear">1</div>
+      <button id="btnUp" class="key k-shift" aria-label="Shift up (E)"><b>E</b><i>up</i></button>
+      <button id="btnAuto" class="key k-auto on" aria-pressed="true" aria-label="Automatic shifting (A)"><b>A</b><i>auto</i></button>
+      <button id="btnBrake" class="key" aria-label="Brake (S)"><b>S</b><i>brake</i></button>
+      <button id="btnMode" class="key k-drive" aria-pressed="false" aria-label="Drive or neutral (D)"><b>D</b><i>drive</i></button>
+      <button id="lever" class="k-lever" tabindex="-1" aria-hidden="true"><span class="lv-d">D</span><span class="lv-n">N</span><span class="lv-slot"></span><span class="lv-knob"></span></button>
+    </div>
+    <button id="btnStart" class="key k-space loading" disabled aria-label="Start the engine, then hold for throttle (Space)"><span class="k-lit"></span><span id="startlabel" class="k-label">loading</span></button>
+  </div>
+  <div id="center">
+    <div id="lamprow"><span class="cap">combustion</span><div id="lamps"></div><span id="cam" hidden>HIGH CAM</span><span id="cut">FUEL CUT</span></div>
+    <canvas id="scope" width="1200" height="150"></canvas>
+    <canvas id="spec" width="600" height="160"></canvas>
+    <div id="legend">
+      <span>−<i class="pf">0.7</i></span><div id="legendbar"></div><span>+<i class="pf">0.7</i> bar</span>
+      <span class="cap">gas pressure relative to ambient · header glow = gas temperature</span>
+    </div>
+  </div>
+</section>
+
+<div id="banner" hidden></div>
+<div id="heavy" class="notice" role="alert" hidden>
+  <p><b>This engine is too heavy for this device.</b> <span id="heavyText"></span></p>
+  <div class="notice-actions"><button id="heavySwitch" class="btn on"></button><button id="heavyKeep" class="btn">Keep this one</button></div>
+</div>
+
+<div id="note" class="modal" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="noteTitle" tabindex="-1">
+    <!-- ========================================================================================
+         ABOUT COPY (the owner's draft of 2026-11-15, corrected against the README; edit freely).
+         ======================================================================================== -->
+    <h2 id="noteTitle">Engine Synthesizer</h2>
+    <p>Sound is computed from the pressure waves travelling through a simulated engine's cylinders, intake and exhaust. No recordings.</p>
+    <p>Each engine is described by its dimensions: bore, stroke, valve timing, firing order and the lengths of its pipes. The simulation burns fuel in each cylinder, moves the gas through the valves and pipes, and what leaves the tailpipe and the intake is the sound you hear. It runs on your own device, tens of thousands of steps a second.</p>
+    <p><span class="ecount">61</span> engines, 35 of them modelled on real ones from published specifications. Bore, stroke, firing order, power and torque are public; cam timing, valve sizes and pipe lengths rarely are, so those are estimated and tuned until each engine makes its published power and torque. Nobody has yet compared them by ear with the real engines, so treat it as a careful toy, not a measurement. Each engine's details in the library list what was estimated and link the sources.</p>
+    <h3>Credits</h3>
+    <p>The picture is drawn with <a href="https://threejs.org/" target="_blank" rel="noopener noreferrer">three.js</a> (MIT licence). The approach, making sound by simulating the physics rather than playing samples, was inspired by the <a href="https://github.com/jamesondh/chimera-vocal-synth" target="_blank" rel="noopener noreferrer">Chimera vocal synthesizer</a>.</p>
+    <!-- end of About copy -->
+    <h2 class="second">What is simulated</h2>
+    <p>The sound and everything that moves come from one physical model running in your browser: no recordings, no samples.</p>
+    <h3>Simulated, and drawn from the simulation</h3>
+    <ul>
+      <li><b>Sound</b>: pressure waves leaving the tailpipes and the intake, from gas flow solved through the cylinders, valves and pipes.</li>
+      <li><b>Crank, pistons, valves</b>: position and lift at true scale. <b>Rotary engines</b>: the housing bore, the eccentric shaft and the rotor's motion are exact; each of the three chambers glows with its own pressure and burn.</li>
+      <li><b>Gas colour in pipes</b>: pressure relative to ambient (blue below, orange to white above; dark at ambient).</li>
+      <li><b>Header glow</b>: temperature of the gas inside the exhaust pipes. The metal's own temperature is not simulated.</li>
+      <li><b>Cylinder glow and lamps</b>: cylinder pressure, burn rate and gas temperature.</li>
+      <li><b>Sound on the floor</b>: the floor of dots swells in slow pulses that spread from each tailpipe and intake opening. The pulses are slowed so they can be seen: their rate rises with engine speed (about one a second at idle, three at the redline) and their height follows the simulated loudness at each opening and the throttle. The colour around the engine is a spectrogram of the sound being played: pitch runs outward from the engine, time runs round it, and a line sweeps round once in nine seconds.</li>
+      <li><b>Tailpipe plume</b>: its speed and density follow the gas velocity at the open end of the exhaust.</li>
+      <li><b>Dials</b>: speed, torque, power, gear and road speed are the model's own numbers.</li>
+    </ul>
+    <h3>Decorative</h3>
+    <ul>
+      <li><b>Overrun flames</b>: shown when the model cuts fuel at speed. Afterfire in the exhaust is simulated in the sound (Workshop, Fueling), but these flames are not drawn from it.</li>
+      <li><b>Camera shake, floor reflection, glow, vignette</b>.</li>
+      <li><b>Rotor flank shape</b>: a circular arc that stays just clear of the housing, standing in for the real flank and its combustion pocket.</li>
+      <li><b>Where the pipes run and what the parts look like</b>: lengths and diameters are the simulated ones; the routing and shapes are a drawing. The picture is stroboscopic, so the engine appears to turn slowly.</li>
+    </ul>
+    <p class="credit about-credit">Time Stolen by <a href="https://joeljohnson.com" target="_blank" rel="noopener">Joel Johnson</a></p>
+    <button id="noteClose" class="btn wide">Close</button>
+  </div>
+</div>
+
+<!-- Before the engine starts the space-bar key (in #kb) is the only lit thing. This layer holds
+     only what must be said: a failure message, or that a linked engine does not exist. -->
+<div id="start">
+  <div id="startmsg" class="startmsg" role="alert" hidden></div>
+  <p id="starttext" hidden></p>
+</div>
+<!-- ============================================================================================
+     LOADING-SCREEN COPY (the owner's wording, 2026-11-15). Edit the three lines here; nothing else
+     depends on them. Shown until the engine starts, on every visit.
+     ============================================================================================ -->
+<div id="pitch">
+  <h1>Engine Synthesizer</h1>
+  <p class="claim">Sound is computed from the pressure waves travelling through a simulated engine's cylinders, intake and exhaust. No recordings.</p>
+  <p class="note">Simulation runs locally on your CPU. Best on desktop; downsampled for mobile.</p>
+  <p class="credit">Time Stolen by <a href="https://joeljohnson.com" target="_blank" rel="noopener">Joel Johnson</a></p>
+</div>
+<button id="btnAbout" class="linkbtn">About</button>
+<div id="err"></div>
+<noscript><div class="nojs">Engine Synthesizer needs JavaScript.</div></noscript>
+<script>
+// If the app's module never runs (a browser too old for import maps, or a script that fails to
+// load or parse), say so on the start card instead of leaving a dead key.
+window.__fail = function (html) {
+  if (window.__app) return;
+  var m = document.getElementById('startmsg'), b = document.getElementById('btnStart');
+  m.innerHTML = html; m.hidden = false; b.hidden = true;
+};
+var oldBrowser = '<b>This browser cannot run the engine synthesizer.</b> It is too old for the way this page loads its code. Current versions of Chrome, Edge, Firefox and Safari (16.4 or later) work.';
+if (!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))) window.__fail(oldBrowser);
+window.addEventListener('error', function () { window.__fail(oldBrowser); });
+</script>
+<script type="module" src="./app.js?v=9f587c7303" onerror="window.__fail('<b>The page could not load its scripts.</b> Check the connection and reload.')"></script>
+</body>
+</html>

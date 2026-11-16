@@ -901,6 +901,34 @@ function buildWankel(L, opts) {
   return { group: g, rotors, x0, x1, flank0 };
 }
 
+// ---------------------------------------------------------------- sound sources
+/** Where each radiating opening of `H.sound.sources` is in the drawing, in model coordinates
+ *  (the model's root is never moved): `pos` the centre of the opening, `dir` the outward unit
+ *  direction, `radius` the opening's radius. A pipe's open end is the end of its drawn path; an
+ *  open throttle is the lip of the bellmouth on the runner whose left end is that volume.
+ *  Returns [] when the telemetry has no sound block. Entries keep the header's order, so entry
+ *  j is row j of the sound block. */
+export function soundSources(H, L) {
+  const S = H.sound;
+  if (!S || !Array.isArray(S.sources)) return [];
+  return S.sources.map((src, j) => {
+    const base = { index: j, name: src.name || `source${j}`, stem: src.stem, pos: null, dir: null, radius: 0 };
+    if (src.pipe >= 0) {
+      const c = L.paths[src.pipe], p = H.pipes[src.pipe];
+      if (!c || !p) return { ...base, kind: 'pipe', pipe: src.pipe, end: src.end };
+      const right = src.end === 'right';
+      const pos = c.getPointAt(right ? 1 : 0), dir = c.getTangentAt(right ? 1 : 0).normalize();
+      if (!right) dir.negate();
+      return { ...base, kind: 'pipe', pipe: src.pipe, end: src.end, pos, dir, radius: 0.5 * p.dia[right ? p.samples - 1 : 0] };
+    }
+    // open throttle: the bellmouth sits on the runner's left end, drawn from -0.015 to +0.025 m
+    // along its axis about volPos (see the 'bell' volume shape)
+    const v = src.volume, s = L.volShape[v], vp = L.volPos[v];
+    if (!s || !vp || s.type !== 'bell') return { ...base, kind: 'throttle', volume: v };
+    return { ...base, kind: 'throttle', volume: v, pos: vp.clone().addScaledVector(s.axis, 0.025), dir: s.axis.clone().normalize(), radius: 1.75 * s.r };
+  });
+}
+
 // ---------------------------------------------------------------- the model
 const EXHAUST_KINDS = { primary: 1, secondary: 1, outlet: 1 };
 
@@ -1039,9 +1067,59 @@ export class EngineModel {
       const c = L.paths[k];
       this.outlets.push({ pos: c.getPointAt(1), dir: c.getTangentAt(1).normalize(), radius: 0.5 * t.pipe.dia[t.pipe.samples - 1], offset: t.pipe.offset + 3 * (t.pipe.samples - 1) });
     });
+    this.soundSources = soundSources(H, L);
     this._tmp = [0, 0, 0];
     this._P = new V3();
     this._W = new V3();
+  }
+
+  /** Check that every sound source sits on the opening it names, measured against the meshes
+   *  as drawn: a pipe end against the centre of the tube's last ring of vertices, a throttle
+   *  mouth against the centre of its bellmouth's lip. Returns the worst position error (m), the
+   *  worst direction error (degrees) and one line per source. */
+  checkSoundSources() {
+    const out = { count: this.soundSources.length, maxPosErr: 0, maxDirErrDeg: 0, missing: 0, sources: [] };
+    const ctr = new V3(), nrm = new V3(), q = new V3();
+    for (const s of this.soundSources) {
+      const row = { name: s.name, kind: s.kind, stem: s.stem };
+      if (!s.pos) { out.missing++; row.missing = true; out.sources.push(row); continue; }
+      ctr.set(0, 0, 0);
+      if (s.kind === 'pipe') {
+        // the ring of vertices at that end of the tube, and the plane it lies in
+        const t = this.tubes[s.pipe], pa = t.geometry.attributes.position.array, per = t.RS + 1;
+        const j = s.end === 'right' ? t.rings - 1 : 0, jIn = s.end === 'right' ? t.rings - 2 : 1;
+        for (let k = 0; k < t.RS; k++) ctr.add(q.fromArray(pa, 3 * (j * per + k)));
+        ctr.multiplyScalar(1 / t.RS);
+        const inner = new V3();
+        for (let k = 0; k < t.RS; k++) inner.add(q.fromArray(pa, 3 * (jIn * per + k)));
+        inner.multiplyScalar(1 / t.RS);
+        nrm.subVectors(ctr, inner).normalize();   // from the pipe's inside toward its open end
+        row.open = this.H.pipes[s.pipe][s.end].type === 'ambient';
+        if (!row.open) out.missing++;
+      } else {
+        // the bellmouth's lip: its vertices furthest out along the bell's axis
+        const v = this.vols[s.volume], ax = this.L.volShape[s.volume].axis, pa = v.mesh.geometry.attributes.position.array;
+        let best = -Infinity;
+        for (let i = 0; i < pa.length; i += 3) best = Math.max(best, q.fromArray(pa, i).dot(ax));
+        let m = 0;
+        const seen = new Set();   // the lathe repeats its seam vertex; count each point once
+        for (let i = 0; i < pa.length; i += 3) {
+          if (q.fromArray(pa, i).dot(ax) < best - 1e-6) continue;
+          const key = `${Math.round(q.x * 1e6)},${Math.round(q.y * 1e6)},${Math.round(q.z * 1e6)}`;   // (-0 prints as 0)
+          if (seen.has(key)) continue;
+          seen.add(key);
+          ctr.add(q); m++;
+        }
+        ctr.multiplyScalar(1 / m).add(v.mesh.position);
+        nrm.copy(ax);
+      }
+      row.posErr = +ctr.distanceTo(s.pos).toExponential(2);
+      row.dirErrDeg = +(Math.acos(Math.min(1, nrm.dot(s.dir))) / RAD).toFixed(3);
+      out.maxPosErr = Math.max(out.maxPosErr, row.posErr);
+      out.maxDirErrDeg = Math.max(out.maxDirErrDeg, row.dirErrDeg);
+      out.sources.push(row);
+    }
+    return out;
   }
 
   /** Draw one frame. `bin` is a Float32Array holding the frame at offset `o`.
@@ -1051,6 +1129,9 @@ export class EngineModel {
     const { r, l, ch, deck } = L;
     const seat = deck + L.recess, n = sp.firing.length, tmpCol = this._tmp, P = this._P, W = this._W;
     const pa = H.p_atm, heat = !!this.opts.heat;
+    // glowScale: one overall factor on every glow drawn here (1 = as the data says; the live page's
+    // warm-up lowers it for an engine that has not been worked)
+    const gs = this.glowScale ?? 1;
     const thr = bin[o + 3];
     const co = o + H.cyl_offset;
     if (this.rotary) this.updateRotary(bin, co);
@@ -1067,7 +1148,7 @@ export class EngineModel {
       ramp(GLOW, tt, tmpCol, 0);
       // brightness belongs to combustion and expansion: pressure and the burn rate drive it,
       // temperature only picks the colour, so the exhaust stroke fades to an ember
-      const gain = 0.02 + 1.5 * Math.pow(Math.min(1, p / 5.0e6), 0.8) + 1.1 * Math.min(1, burn / 2.0);
+      const gain = gs * (0.02 + 1.5 * Math.pow(Math.min(1, p / 5.0e6), 0.8) + 1.1 * Math.min(1, burn / 2.0));
       cy.glowMat.color.setRGB(tmpCol[0] * gain, tmpCol[1] * gain, tmpCol[2] * gain);
       cy.light.intensity = (this.opts.lightGain || 0.10) * Math.max(0, gain - 0.15);
       for (const v of cy.vin) v.position.y = seat - li;
@@ -1095,10 +1176,10 @@ export class EngineModel {
         const p0 = bin[po + 3 * i0] - (refP ? refP(o, off + 3 * i0) : pa), p1 = bin[po + 3 * i1] - (refP ? refP(o, off + 3 * i1) : pa);
         pressureColor((p0 + (p1 - p0) * (f - i0)) * 1e-5, tmpCol, 0);
         let q = j * per * 3;
-        for (let k = 0; k < per; k++) { arr[q++] = tmpCol[0]; arr[q++] = tmpCol[1]; arr[q++] = tmpCol[2]; }
+        for (let k = 0; k < per; k++) { arr[q++] = tmpCol[0] * gs; arr[q++] = tmpCol[1] * gs; arr[q++] = tmpCol[2] * gs; }
         if (hot) {
           const t0 = bin[po + 3 * i0 + 1], t1 = bin[po + 3 * i1 + 1];
-          const h = Math.min(1, Math.max(0, (t0 + (t1 - t0) * (f - i0) - 800) / 550));
+          const h = gs * Math.min(1, Math.max(0, (t0 + (t1 - t0) * (f - i0) - 800) / 550));
           hot.fill(h, j * per, (j + 1) * per);
         }
       }
@@ -1108,7 +1189,7 @@ export class EngineModel {
     for (const v of vols) {
       if (!v) continue;
       pressureColor((bin[o + v.offset] - (refP ? refP(o, v.offset) : pa)) * 1e-5, tmpCol, 0);
-      v.mat.uniforms.uCol.value.set(tmpCol[0], tmpCol[1], tmpCol[2]);
+      v.mat.uniforms.uCol.value.set(tmpCol[0] * gs, tmpCol[1] * gs, tmpCol[2] * gs);
     }
     if (plate) plate.rotation.z = Math.acos(Math.max(0, 1 - Math.min(1, thr)));
   }

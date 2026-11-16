@@ -1,6 +1,6 @@
 // Page-side handle on the live engine simulator. See README in this folder for the contract.
-const WASM_URL = new URL('./engsim.wasm?v=6eac95ece6', import.meta.url);
-const WORKLET_URL = new URL('./worklet.js?v=6eac95ece6', import.meta.url);
+const WASM_URL = new URL('./engsim.wasm?v=7a5737f0f1', import.meta.url);
+const WORKLET_URL = new URL('./worklet.js?v=7a5737f0f1', import.meta.url);
 const QUALITY = ['live48+W', 'live96+W', 'live48', 'live96'];
 let modulePromise = null, mainInstance = null;
 
@@ -34,10 +34,35 @@ export class LiveEngine extends EventTarget {
     for (let i = 0; i < 20; i++) x.es_process(l, out, 128);
     const blocks = 60, t0 = performance.now();
     for (let i = 0; i < blocks; i++) x.es_process(l, out, 128);
-    const load = (performance.now() - t0) / (blocks * 128 / 48000 * 1000);
+    const load = LiveEngine.slow * (performance.now() - t0) / (blocks * 128 / 48000 * 1000);
     x.es_drop(l); x.es_free(out, 128 * 8);
     return load;
   }
+
+  /**
+   * Build an engine on the page's own WebAssembly instance (no audio context needed) and return
+   * its header and the first telemetry frame, so the picture can be drawn before sound starts.
+   * @returns {Promise<{header: object, frame: Float32Array}>}
+   */
+  static async preview(engine, overrides) {
+    const x = await mainExports();
+    const req = request(engine, overrides);
+    const p = x.es_alloc(req.length); new Uint8Array(x.memory.buffer, p, req.length).set(req);
+    const l = x.es_new(p, req.length, 0, 0); x.es_free(p, req.length);
+    if (!l) throw new Error('unknown engine or bad overrides: ' + engine);
+    try {
+      const header = JSON.parse(text(x, x.es_header_ptr(l), x.es_header_len(l)));
+      const frame = new Float32Array(x.memory.buffer, x.es_frame_ptr(l), x.es_frame_len(l)).slice();
+      return { header, frame };
+    } finally { x.es_drop(l); }
+  }
+
+  /**
+   * Test hook: make the simulator k times as costly as it is (k a whole number, default 1), to
+   * stand in for a slower device. The audio thread runs k-1 extra copies of the engine and throws
+   * their output away; measure() scales its result by k. Set it before create().
+   */
+  static slow = 1;
 
   /**
    * @param {AudioContext} audioCtx  must run at 48000 Hz (new AudioContext({sampleRate: 48000}))
@@ -47,7 +72,7 @@ export class LiveEngine extends EventTarget {
     if (audioCtx.sampleRate !== 48000) console.warn(`LiveEngine: audio context runs at ${audioCtx.sampleRate} Hz; the simulator outputs 48000 Hz, so pitch will be off`);
     const module = await wasmModule();
     await audioCtx.audioWorklet.addModule(WORKLET_URL);
-    const node = new AudioWorkletNode(audioCtx, 'engine-synth', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { module } });
+    const node = new AudioWorkletNode(audioCtx, 'engine-synth', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { module, slow: Math.max(1, Math.round(LiveEngine.slow) || 1) } });
     const e = new LiveEngine(audioCtx, node, opts.quality || 'auto');
     await e._ready;
     await e.setEngine(opts.engine || 'v8_cross', opts.overrides || {});
@@ -64,6 +89,7 @@ export class LiveEngine extends EventTarget {
     this.engine = ''; this.overrides = {};
     this._qualityPref = quality;
     this._throttle = 0; this._drive = false; this._auto = true;
+    this._phi = 1; this._overrunFuel = 0; this._limiter = 'fuel'; this._liftoffPops = 0;
     this._pending = new Map(); this._id = 0;
     this._ready = new Promise(res => { this._resolveReady = res; });
     node.port.onmessage = (ev) => this._message(ev.data);
@@ -77,6 +103,7 @@ export class LiveEngine extends EventTarget {
     } else if (m.type === 'stats') {
       this.stats.load = m.load;
       if (m.load > 1) this.stats.dropped++;
+      this.dispatchEvent(new Event('stats'));
     } else if (m.type === 'header' || m.type === 'error') {
       const p = this._pending.get(m.id); this._pending.delete(m.id);
       if (p) m.type === 'header' ? p.resolve(JSON.parse(new TextDecoder().decode(m.header))) : p.reject(new Error(m.message));
@@ -94,7 +121,7 @@ export class LiveEngine extends EventTarget {
     const startRpm = (this.frame && this.engine === name) ? this.frame[2] : 0;
     const header = await new Promise((resolve, reject) => {
       this._pending.set(id, { resolve, reject });
-      this.output.port.postMessage({ type: 'new', id, req: request(name, overrides), quality: q, startRpm, drive: this._drive, auto: this._auto, throttle: this._throttle });
+      this.output.port.postMessage({ type: 'new', id, req: request(name, overrides), quality: q, startRpm, drive: this._drive, auto: this._auto, throttle: this._throttle, phi: this._phi, overrunFuel: this._overrunFuel, limiter: this._limiter, liftoffPops: this._liftoffPops });
     });
     this.engine = name; this.overrides = overrides;
     this.header = header; this.frame = null;
@@ -103,9 +130,30 @@ export class LiveEngine extends EventTarget {
     return header;
   }
 
+  /** 'light' or 'heavy': the quality level the running engine was built at. */
+  get level() { return this.header && this.header.quality === QUALITY[1] ? 'heavy' : 'light'; }
+  get qualityPref() { return this._qualityPref; }
+  /** Change the quality preference ('auto' | 'light' | 'heavy'); by default rebuild the running engine at it. */
+  async setQuality(pref, rebuild = true) {
+    this._qualityPref = pref === 'heavy' || pref === 'light' ? pref : 'auto';
+    if (rebuild && this.engine) return this.setEngine(this.engine, this.overrides);
+  }
+
   setThrottle(x) { this._throttle = Math.min(1, Math.max(0, x)); this.output.port.postMessage({ type: 'throttle', value: this._throttle }); }
   setBrake(x) { this.output.port.postMessage({ type: 'brake', value: Math.min(1, Math.max(0, x)) }); }
   setMode(m) { this._drive = m === 'drive'; this.output.port.postMessage({ type: 'drive', value: this._drive }); if (this._drive && !this._auto) this.setAutoShift(false); }
   setAutoShift(b) { this._auto = !!b; this.output.port.postMessage({ type: 'auto', value: this._auto }); }
   shift(dir) { this.output.port.postMessage({ type: 'shift', value: dir > 0 ? 1 : -1 }); }
+  /** Fuel-air equivalence ratio: 1 stoichiometric, below lean, above rich (the simulator clamps it to 0.7..1.7). */
+  setMixture(phi) { const v = Number(phi); if (!Number.isFinite(v)) return; this._phi = Math.min(1.7, Math.max(0.7, v)); this.output.port.postMessage({ type: 'phi', value: this._phi }); }
+  /** Share of overrun cycles that are fueled (and burn late, so they pop) instead of cut, 0..1. */
+  setOverrunFuel(x) { const v = Number(x); if (!Number.isFinite(v)) return; this._overrunFuel = Math.min(1, Math.max(0, v)); this.output.port.postMessage({ type: 'overrunFuel', value: this._overrunFuel }); }
+  /** Lift-off pops, 0..1: fuel left on the port walls feeds the first cycles after the throttle shuts and gathers in the exhaust, where it lights as a few bangs that tail off (0 none, about 0.3 a sporty road car, 1 a full "burble tune"). */
+  setLiftoffPops(x) { const v = Number(x); if (!Number.isFinite(v)) return; this._liftoffPops = Math.min(1, Math.max(0, v)); this.output.port.postMessage({ type: 'liftoffPops', value: this._liftoffPops }); }
+  /** Rev limiter: 'fuel' cuts fuel (cylinders pump air), 'spark' cuts spark (raw mixture goes into the exhaust). */
+  setLimiter(kind) { this._limiter = kind === 'spark' ? 'spark' : 'fuel'; this.output.port.postMessage({ type: 'limiter', value: this._limiter }); }
+  get mixture() { return this._phi; }
+  get overrunFuel() { return this._overrunFuel; }
+  get limiter() { return this._limiter; }
+  get liftoffPops() { return this._liftoffPops; }
 }

@@ -1,0 +1,257 @@
+/* The key-cap controls and the first-run teaching states.
+ *
+ * PART 1 is the skin: every colour, font, radius, depth and timing the controls use, as custom
+ * properties on one root class (<html class="skin-default">). A different skin is another class
+ * with the same properties; nothing in part 2 names a colour or a font.
+ * Names shared with the mood board's era-skin study (moodboard css/era.css) mean the same thing
+ * here: --key, --key-edge, --key-ink, --key-sub, --key-r, --key-font, --knob, --slot, --hot.
+ * PART 2 is layout, states and motion, and reads only those properties.
+ */
+
+/* ============================================================ PART 1: skin */
+.skin-default {
+  /* key caps */
+  --key-font: var(--mono);
+  --key: #272c37;              /* cap top: a clear step up from the deck (measured, see tools/contrast_check.py) */
+  --key-down: #3a4150;         /* cap top while held */
+  --key-edge: #667080;         /* outline: at least 3:1 against the deck */
+  --key-side: #000;            /* the flat slab under a cap; its height is the travel */
+  --key-ink: #f4f6fa;
+  --key-sub: #b3bbc9;          /* the small second legend on a cap: at least 4.5:1 against the cap */
+  --k-on: #ffb04a;                /* a control that is engaged (drive, auto, brake held) */
+  --key-r: 7px;
+  --k-travel: 3px;
+  /* the space bar: the one light-faced key */
+  --k-space-face: #dcd9cf;
+  --k-space-side: #7d7a72;
+  --k-space-ink: #15171c;
+  /* the thing being taught: one accent, nowhere else */
+  --k-accent: var(--hot);         /* --hot is the app's existing hot orange (style.css :root) */
+  --k-accent-halo: rgba(255,106,42,.55);
+  /* gear lever */
+  --slot: #000;
+  --slot-edge: #667080;
+  --knob: #dcd9cf;
+  --knob-edge: #7d7a72;
+  /* the floor behind the controls is darkened so the caps, and above all a cue, stay the clearest things there */
+  --k-scrim: 4,5,10;              /* r,g,b */
+  --k-scrim-level: .5;
+  /* the bed the keys sit in: a dark deck rising from the bottom edge */
+  --deck: rgba(7,8,12,.96);
+  --deck-edge: rgba(255,255,255,.07);
+  --deck-shadow: rgba(0,0,0,.6);
+  /* a key that has not woken yet: its outline in the bed */
+  --k-ghost: #3a404c;
+  --k-ghost-ink: #7a8292;         /* at least 3:1 against the deck, so the bed still reads as keys */
+  /* the words on the loading screen */
+  --pitch-font: var(--sans);
+  --pitch-title: #f1f3f7;
+  --pitch-claim: #c3cad6;
+  --pitch-note: #7f8898;
+  --pitch-veil: 4,5,10;           /* r,g,b behind the words on a phone, where they lie over the top of the dark engine */
+  /* the gear numeral's window in the deck: a readout, not a key */
+  --readout: rgba(0,0,0,.42);
+  --readout-edge: #3a404c;
+  /* the maker's credit: quiet, legible, and plainly a link */
+  --credit-ink: #9aa3b2;
+  --credit-link: #e9edf4;
+  /* levels */
+  /* motion */
+  --k-press: .05s;
+  --k-ease: cubic-bezier(.2,.8,.2,1);
+  --k-snap: cubic-bezier(.3,1.7,.5,1);   /* overshoots a little: lever throw, arrivals */
+}
+
+/* ============================================================ PART 2: layout, states, motion */
+.kb { --ku: clamp(44px, 3.6vw, 56px); --kg: 6px; --kgroup: 12px; --kpad: 18px; position: relative; display: grid; gap: var(--kgroup); justify-items: center; width: calc(10 * var(--ku) + 9 * var(--kg)); padding-bottom: var(--k-travel); }
+/* the bed: one dark deck rising from the bottom edge, so no key floats over the floor */
+.k-deck { position: absolute; z-index: -1; left: calc(-1 * var(--kpad)); right: calc(-1 * var(--kpad)); top: calc(-1 * var(--kpad)); bottom: -60px; border-radius: 14px 14px 0 0; background: var(--deck); box-shadow: 0 0 0 1px var(--deck-edge), 0 -24px 50px var(--deck-shadow); pointer-events: none; }
+
+.key { position: relative; display: block; margin: 0; padding: 0; font-family: var(--key-font); color: var(--key-ink); background: var(--key); border: 1px solid var(--key-edge); border-radius: var(--key-r); box-shadow: 0 var(--k-travel) 0 var(--key-side); cursor: pointer; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; outline: none; transition: transform var(--k-press) ease-out, box-shadow var(--k-press) ease-out, background-color .12s, color .2s, border-color .2s, opacity .45s var(--k-ease); }
+.key:focus-visible { border-color: var(--key-sub); }
+.key.down, button.key:active { transform: translateY(var(--k-travel)); box-shadow: 0 0 0 var(--key-side); background: var(--key-down); }
+.key b { position: absolute; left: 9px; top: 8px; text-align: left; font-size: 12.5px; font-weight: 500; line-height: 1; }
+.key i { position: absolute; left: 9px; right: 4px; bottom: 8px; text-align: left; font-style: normal; font-size: 9px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; line-height: 1; color: var(--key-sub); white-space: nowrap; transition: color .2s; }
+.key.on b, .key.on i { color: var(--k-on); }
+
+/* 1 to 9 and 0: ten small keys, as wide together as the space bar. They light left to right with the
+   throttle (--f is how much of a key is lit, 0..1): key n is full at n x 10%, and 0 is 100%. */
+.k-nums { display: grid; grid-template-columns: repeat(10, 1fr); gap: var(--kg); width: 100%; touch-action: none; cursor: pointer; transition: opacity .45s var(--k-ease); }
+.key.num { --num-base: var(--key); height: 28px; display: grid; place-items: center; font-size: 12px; font-weight: 500; color: var(--key-ink); pointer-events: none; background: linear-gradient(90deg, var(--k-space-face) calc(var(--f, 0) * 100%), var(--num-base) 0); }
+.key.num.down { color: var(--key-ink); background: linear-gradient(90deg, var(--k-space-face) calc(var(--f, 0) * 100%), var(--key-down) 0); }
+.key.num.lit, .key.num.lit.down { color: var(--k-space-ink); }
+
+/* The deck is one grid of ten columns, set by the number row. Under it, two rows of three wide
+   keys on the same columns, as they sit on a keyboard: Q, the gear numeral's window (where W is),
+   E; then A, S, D. The lever has the tenth column to itself, beside E and D. Every legend sits on
+   the same two lines: the key's letter top left, what it does bottom left. */
+.k-letters { display: grid; width: 100%; grid-template-columns: repeat(10, minmax(0, 1fr)); grid-auto-rows: var(--ku); gap: var(--kg); transition: opacity .45s var(--k-ease); }
+.k-letters .key { width: 100%; height: 100%; }
+#btnDown { grid-area: 1 / 1 / 2 / 4; } #gear { grid-area: 1 / 4 / 2 / 7; } #btnUp { grid-area: 1 / 7 / 2 / 10; }
+#btnAuto { grid-area: 2 / 1 / 3 / 4; } #btnBrake { grid-area: 2 / 4 / 3 / 7; } #btnMode { grid-area: 2 / 7 / 3 / 10; }
+.k-gear { display: grid; place-items: center; border-radius: var(--key-r); background: var(--readout); box-shadow: inset 0 0 0 1px var(--readout-edge); font-family: var(--key-font); font-size: calc(var(--ku) * .58); font-weight: 600; line-height: 1; color: var(--key-ink); transition: color .25s, opacity .45s; }
+.drive .k-gear { color: var(--k-on); }
+.k-gear.tick { animation: k-tick .22s var(--k-snap); }
+@keyframes k-tick { 0% { transform: translateY(7px) scale(.82); opacity: .2; } 100% { transform: none; opacity: 1; } }
+
+.k-lever { position: relative; grid-area: 1 / 10 / 3 / 11; padding: 0; margin: 0; border: 0; background: none; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent; outline: none; font-family: var(--key-font); transition: opacity .45s var(--k-ease); }
+.lv-slot { position: absolute; left: calc(50% - 12px); top: 6px; bottom: 6px; width: 8px; border-radius: 4px; background: var(--slot); box-shadow: 0 0 0 1px var(--slot-edge); }
+.lv-knob { position: absolute; left: calc(50% - 22px); top: calc(100% - 34px); width: 28px; height: 28px; border-radius: 50%; background: var(--knob); box-shadow: 0 var(--k-travel) 0 var(--knob-edge); transition: top .2s var(--k-snap), left .2s var(--k-snap), background-color .2s; }
+.lv-d, .lv-n { position: absolute; left: calc(50% + 12px); font-size: 11px; font-weight: 600; line-height: 1; color: var(--key-sub); transition: color .2s; }
+.lv-d { top: 15px; } .lv-n { bottom: 15px; }
+.drive .lv-knob { top: 3px; }
+.drive .lv-d { color: var(--k-on); }
+.kb:not(.drive) .lv-n { color: var(--key-ink); }
+
+/* the space bar: lights up as the page loads, starts the engine, then is the throttle */
+.k-space { width: 100%; height: calc(var(--ku) + 8px); overflow: hidden; border-color: transparent; box-shadow: 0 var(--k-travel) 0 var(--k-space-side); }
+.k-space.loading { border-color: var(--key-edge); box-shadow: 0 var(--k-travel) 0 var(--key-side); cursor: default; }
+.k-space:not(.loading) { background: var(--k-space-face); }
+.k-space.down, button.k-space:active { background: var(--k-space-face); box-shadow: 0 0 0 var(--k-space-side); }
+.k-space.loading.down, button.k-space.loading:active { background: var(--key); }
+.k-space.loading:active { transform: none; }
+.k-lit { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--load, 0) * 100%); background: var(--k-space-face); transition: width .45s var(--k-ease); }
+.k-label { position: absolute; inset: 0; display: grid; place-items: center; font-size: 10.5px; letter-spacing: .34em; text-indent: .34em; text-transform: uppercase; color: var(--key-sub); transition: color .3s, opacity .4s; }
+.k-space:not(.loading) .k-label, .k-space.starting .k-label { color: var(--k-space-ink); }
+body.run .k-label { opacity: 0; }
+.k-space[hidden] { display: none; }
+
+/* ---- the one thing being taught wears the accent, and is the only thing that loops */
+.k-space.teach { animation: k-breathe 2.2s ease-in-out infinite; }
+@keyframes k-breathe { 0%, 100% { box-shadow: 0 var(--k-travel) 0 var(--k-space-side), 0 0 0 0 var(--k-accent-halo); } 50% { box-shadow: 0 var(--k-travel) 0 var(--k-space-side), 0 0 26px 3px var(--k-accent-halo); } }
+.k-space.teach.down { animation: none; }
+.k-shift.teach { border-color: var(--k-accent); }
+.k-shift.teach b, .k-shift.teach i { color: var(--k-accent); }
+.k-auto.nudge, #btnBrake.teach { animation: k-nudge .5s var(--k-ease) 2; }
+#btnBrake.teach { border-color: var(--k-accent); }
+#btnBrake.teach b, #btnBrake.teach i { color: var(--k-accent); }
+@keyframes k-nudge { 50% { border-color: var(--k-on); transform: translateY(-2px); } }
+
+/* ---- before the engine starts: the space bar over a dark engine, nothing else lit */
+#cluster, #center, #topright, .engbtn, #engstep, #espec, #btnWorkshop { transition: opacity .6s var(--k-ease); }
+body.pre #cluster, body.pre #center, body.pre #topright, body.pre .engbtn, body.pre #engstep, body.pre #espec, body.pre #btnWorkshop { opacity: 0; pointer-events: none; }
+#titlerow { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; transition: opacity .9s .25s; }
+body.pre #titlerow { opacity: 0; transition: none; pointer-events: none; }
+/* ---- the maker's credit: on the loading screen under the note, beside the name while running, and in About */
+.credit { margin: 0; font-family: var(--pitch-font); font-size: 12px; line-height: 1.5; color: var(--credit-ink); white-space: nowrap; }
+.credit a { color: var(--credit-link); text-decoration: underline; text-decoration-color: var(--credit-ink); text-underline-offset: 3px; pointer-events: auto; }
+.credit a:hover, .credit a:focus-visible { text-decoration-color: var(--credit-link); outline: none; }
+#credit { font-size: 11.5px; line-height: 1; }
+#pitch .credit { margin-top: 10px; font-size: 12.5px; }
+.card .about-credit { margin: 14px 0 14px; font-size: 13.5px; }
+/* ---- the words on the loading screen: the name, the claim, a quiet technical note. They sit bottom
+        left, where the tachometer arrives on start, clear of the engine and of the ripple's path from
+        the key to the engine; on start they fade and the name is taken up by the small label top left. */
+#pitch { position: fixed; z-index: 4; left: 26px; bottom: 30px; width: min(400px, calc(50vw - 5 * clamp(44px, 3.6vw, 56px) - 98px)); font-family: var(--pitch-font); pointer-events: none; transition: opacity .45s var(--k-ease), transform .7s var(--k-ease); transform-origin: 0 0; }
+#pitch h1 { margin: 0 0 16px; font-size: clamp(42px, 4.35vw, 63px); font-weight: 650; letter-spacing: -.028em; line-height: .98; color: var(--pitch-title); }
+#pitch .claim { margin: 0 0 14px; font-size: clamp(15px, 1.2vw, 17.5px); line-height: 1.45; color: var(--pitch-claim); }
+#pitch .note { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--pitch-note); }
+body.run #pitch { opacity: 0; transform: translateY(-14px); }
+#start { position: fixed; z-index: 12; left: 50%; bottom: 252px; transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); text-align: center; pointer-events: none; }
+#start > * { pointer-events: auto; }
+#start .startmsg { margin-bottom: 0; }
+#starttext { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--key-sub); }
+#start .go { margin-top: 14px; }
+#btnAbout { position: fixed; z-index: 12; right: 26px; top: 22px; font-size: 12.5px; opacity: .7; }
+body.run #btnAbout, body.run #starttext { display: none; }
+
+/* ---- a dark fall-off behind the dashboard: the floor is lively, and the controls (above all the
+        one being taught) must stay the clearest thing down here */
+#dash::before { content: ''; position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; height: calc(100% + 50px); pointer-events: none; opacity: 0; transition: opacity .8s var(--k-ease);
+  background: linear-gradient(to top, rgba(var(--k-scrim), var(--k-scrim-level)) 0%, rgba(var(--k-scrim), calc(var(--k-scrim-level) * .92)) 55%, rgba(var(--k-scrim), calc(var(--k-scrim-level) * .5)) 80%, rgba(var(--k-scrim), 0) 100%); }
+body.run #dash::before { opacity: 1; }
+
+/* ---- a ghost: a key's outline in the bed. Ghosts belong to the loading screen only: before the
+        start every key but the space bar is one. From the moment the engine starts every key is drawn
+        in full; teaching adds the accent to one thing and never dims the rest. */
+body.pre :is(.key.num, .k-shift, .k-auto, #btnBrake, #btnMode) { --num-base: transparent; border-color: var(--k-ghost); box-shadow: none; color: var(--k-ghost-ink); }
+body.pre :is(.k-shift, .k-auto, #btnBrake, #btnMode) { background: transparent; }
+body.pre :is(.k-shift, .k-auto, #btnBrake, #btnMode) :is(b, i), body.pre .k-gear, body.pre .k-lever :is(.lv-d, .lv-n) { color: var(--k-ghost-ink); }
+body.pre .k-lever .lv-knob { background: var(--deck); box-shadow: 0 0 0 1px var(--k-ghost-ink); }
+body.pre .k-lever .lv-slot { background: transparent; box-shadow: 0 0 0 1px var(--k-ghost); }
+#pedal .key.num.lit { color: var(--k-space-ink); border-color: transparent; }
+body.pre :is(.k-nums, .k-letters) { pointer-events: none; }
+
+/* ---- a brief emphasis on the tachometer each time the limiter bites */
+#tach.kick { animation: tach-kick .2s ease-out; }
+@keyframes tach-kick { 0% { transform: scale(1.022); filter: drop-shadow(0 8px 30px rgba(0,0,0,.6)) brightness(1.25); } 100% { transform: none; } }
+
+/* the too-heavy notice sits top centre under the top bar, compact, never over the controls */
+.notice { top: 112px; bottom: auto; width: min(560px, calc(100vw - 24px)); padding: 11px 14px; }
+.notice p { margin-bottom: 9px; font-size: 13px; line-height: 1.45; }
+.notice-actions .btn { padding: 7px 12px; }
+#cut { white-space: nowrap; }
+@media (max-width: 1399px) { #lamprow .cap { display: none; } }
+
+/* ---- previous / next engine: two small caps beside the Engines pill (the left and right arrow keys) */
+#brand { position: relative; }
+#engstep { position: absolute; display: flex; gap: 5px; }
+.key.mini { width: 30px; height: 26px; display: grid; place-items: center; font-size: 9px; color: var(--key-ink); }
+
+/* ---- the engine library is a drawer down the left side, above the dashboard: the picture is not
+        covered or dimmed (the scene shifts its lens so the engine sits in the middle of what is left),
+        and the tachometer, keys and spectrogram stay in view. Details open inside it. */
+@media (min-width: 901px) {
+  #brScrim { display: none; }
+  .browser { left: 0; top: 0; bottom: 308px; width: 440px; grid-template-columns: minmax(0, 1fr); border-left: 0; border-top: 0; border-radius: 0 0 16px 0; animation: drawer-in .3s var(--k-ease); }
+  .br-head { flex-wrap: wrap; }
+  #brSearch { flex: 1 1 100%; order: -1; }
+  .br-head .chips { flex: 1; }
+  .eng .info { display: grid; place-items: center; line-height: 1; }
+  .br-detail { display: none; position: absolute; inset: 0; border-left: 0; background: rgba(9,11,16,.98); z-index: 3; }
+  .browser.detail .br-detail { display: block; }
+  .br-detail .back { display: inline-block; }
+}
+@media (min-width: 901px) and (max-width: 1399px) { .browser { width: 400px; } }
+@media (min-width: 901px) and (max-width: 1239px) { .browser { bottom: 258px; } }
+@media (min-width: 901px) and (max-height: 620px) { .browser { bottom: 238px; } }
+@keyframes drawer-in { from { transform: translateX(-36px); opacity: 0; } }
+
+/* ---- narrower desktop windows */
+@media (max-width: 1239px) and (min-width: 901px) {
+  #readouts, #scope { display: none; }
+  #tach { width: 230px; height: 230px; }
+  #cluster { width: 236px; }
+  .kb { --ku: 42px; }
+}
+@media (max-height: 620px) and (min-width: 901px) {
+  .kb { --ku: 40px; }
+  #start { bottom: 216px; }
+}
+
+/* ---- phones: same caps, sized for thumbs; the number row sits on the space bar */
+@media (max-width: 900px) {
+  #dash { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "center center" "cluster letters" "nums nums" "space space"; gap: 8px; padding: 0 10px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .kb { display: contents; --ku: 50px; --kg: 6px; }
+  .k-deck { position: relative; inset: auto; grid-row: 2 / 5; grid-column: 1 / 3; align-self: stretch; justify-self: stretch; margin: -10px -10px -40px; border-radius: 16px 16px 0 0; }
+  #center { grid-area: center; width: auto; justify-self: stretch; gap: 6px; }
+  #cluster { grid-area: cluster; width: auto; }
+  #tach { width: min(176px, calc(100vw - 244px)); height: min(176px, calc(100vw - 244px)); }
+  .k-letters { grid-area: letters; justify-self: end; align-self: center; margin-bottom: var(--k-travel); width: auto; grid-template-columns: repeat(3, var(--ku)) 44px; grid-auto-rows: 48px; }
+  #btnDown { grid-area: 1 / 1; } #gear { grid-area: 1 / 2; } #btnUp { grid-area: 1 / 3; } #btnAuto { grid-area: 2 / 1; } #btnBrake { grid-area: 2 / 2; } #btnMode { grid-area: 2 / 3; }
+  .k-lever { grid-area: 1 / 4 / 3 / 5; }
+  .k-gear { font-size: 27px; }
+  .key b { left: 8px; top: 7px; } .key i { left: 8px; bottom: 7px; }
+  .k-nums { grid-area: nums; --kg: 4px; margin-bottom: var(--k-travel); }
+  .key.num { height: 36px; font-size: 13px; }
+  .k-space { grid-area: space; height: 58px; margin-bottom: var(--k-travel); }
+  .key b { font-size: 13px; }
+  #start { bottom: 96px; }
+  #btnAbout { right: 12px; top: 8px; }
+  #titlerow { gap: 10px; }
+  #credit { font-size: 10.5px; }
+  /* no room beside the engine on a phone: the words go to the top, over a veil that fades the top of the dark engine out under them */
+  #pitch { left: 0; right: 0; top: 0; bottom: auto; width: auto; padding: 14px 64px 56px 14px; background: linear-gradient(to bottom, rgba(var(--pitch-veil), .94) 0%, rgba(var(--pitch-veil), .86) 62%, rgba(var(--pitch-veil), 0) 100%); }
+  #pitch h1 { font-size: 40px; margin-bottom: 10px; }
+  #pitch .claim { font-size: 15px; margin-bottom: 8px; }
+  #pitch .note { font-size: 11.5px; }
+  body.run #pitch { transform: none; }
+  .notice { top: 196px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key, .k-nums, .k-letters, .k-gear, .k-lever, .lv-knob, .k-lit, .k-label, .lv-slot, #pitch, #cluster, #center, #topright, .engbtn, #espec, #btnWorkshop, #title, .engbtn-go, #readouts { transition-duration: .01s !important; }
+  .k-gear.tick, #tach.kick, .k-auto.nudge, #btnBrake.teach, .browser { animation: none; }
+  /* a cue still shows, as a steady accent instead of a loop */
+  .k-space.teach { animation: none; box-shadow: 0 var(--k-travel) 0 var(--k-space-side), 0 0 22px 2px var(--k-accent-halo); }
+}

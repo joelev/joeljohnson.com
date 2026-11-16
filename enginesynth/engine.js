@@ -1,6 +1,6 @@
 // Page-side handle on the live engine simulator. See README in this folder for the contract.
-const WASM_URL = new URL('./engsim.wasm?v=9289031db6', import.meta.url);
-const WORKLET_URL = new URL('./worklet.js?v=9289031db6', import.meta.url);
+const WASM_URL = new URL('./engsim.wasm?v=ab842920c4', import.meta.url);
+const WORKLET_URL = new URL('./worklet.js?v=ab842920c4', import.meta.url);
 const QUALITY = ['live48+W', 'live96+W', 'live48', 'live96'];
 let modulePromise = null, mainInstance = null;
 

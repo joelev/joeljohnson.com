@@ -2,7 +2,7 @@
 <html lang="en" class="skin-default">
 <head>
 <base href="../../">
-<script>window.__build = "18e7928db1"; window.__enginePages = true;</script>
+<script>window.__build = "46fea24ae5"; window.__enginePages = true;</script>
 <meta charset="utf-8">
 <title>6.2 L V8, cross-plane crank, long-overlap cam · Engine Synthesizer</title>
 <meta name="engine" content="v8_cam">
@@ -24,9 +24,9 @@
 <meta name="twitter:title" content="6.2 L V8, cross-plane crank, long-overlap cam · Engine Synthesizer">
 <meta name="twitter:description" content="8 cylinders, 103.2 x 92 mm bore and stroke, 6,800 rpm redline. Sound computed from the pressure waves in a simulated engine. No recordings.">
 <meta name="twitter:image" content="https://joeljohnson.com/enginesynth/og/v8_cam.jpg">
-<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=18e7928db1">
-<link rel="stylesheet" href="./style.css?v=18e7928db1">
-<link rel="stylesheet" href="./controls.css?v=18e7928db1">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=46fea24ae5">
+<link rel="stylesheet" href="./style.css?v=46fea24ae5">
+<link rel="stylesheet" href="./controls.css?v=46fea24ae5">
 <script type="importmap">
 { "imports": {
     "three": "./vendor/three/build/three.module.min.js",
@@ -133,6 +133,7 @@
     <canvas id="spec" width="600" height="160"></canvas>
     <div id="legend">
       <span>−<i class="pf">0.7</i></span><div id="legendbar"></div><span>+<i class="pf">0.7</i> bar</span>
+      <span id="lgcharge" hidden><span>charge air 0</span><span id="legendbar2"></span><span>+<i id="pfc">1.1</i> bar</span></span>
       <span class="cap">gas pressure relative to ambient · header glow = gas temperature</span>
     </div>
   </div>
@@ -212,6 +213,6 @@ var oldBrowser = '<b>This browser cannot run the engine synthesizer.</b> It is t
 if (!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))) window.__fail(oldBrowser);
 window.addEventListener('error', function () { window.__fail(oldBrowser); });
 </script>
-<script type="module" src="./app.js?v=18e7928db1" onerror="window.__fail('<b>The page could not load its scripts.</b> Check the connection and reload.')"></script>
+<script type="module" src="./app.js?v=46fea24ae5" onerror="window.__fail('<b>The page could not load its scripts.</b> Check the connection and reload.')"></script>
 </body>
 </html>

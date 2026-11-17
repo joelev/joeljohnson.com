@@ -174,6 +174,10 @@ function routePipes(H, cyl, B, opt = {}) {
   };
   const primEnd = {}, volOut = {}, collAxis = {}, collN = {};
   const rp = 0.5 * sp.primary_d;
+  // On a turbo engine whose collectors are the turbine scrolls (no merged turbine inlet), each
+  // collector points straight down and out from its bank, with no rearward sweep: the turbine
+  // housing hangs off its end with the shaft along the crank (see the turbocharger section below).
+  const scrollColl = volByName.turbine_out !== undefined && volByName.turbine_in === undefined;
   sp.groups.forEach((grp, g) => {
     const vi = volByName[`collector${g + 1}`];
     if (vi === undefined || !grp.length) return;
@@ -188,7 +192,8 @@ function routePipes(H, cyl, B, opt = {}) {
     // swept back about 30 degrees so the gas leaves heading rearward
     const axis = opt.radial
       ? am.clone().normalize().multiplyScalar(0.45).addScaledVector(bm, 0.25).addScaledVector(ex, 1).normalize()   // radial: stacks point back and a little outward
-      : bm.clone().addScaledVector(down, 0.8 * (1 - Math.max(0, bm.dot(down)))).normalize().addScaledVector(ex, 0.6).normalize();
+      : scrollColl ? bm.clone().addScaledVector(down, (bm.dot(down) > 0.3 ? 0.5 : 1.0) * (1 - Math.max(0, bm.dot(down)))).normalize()   // an inline's collector points well down, so its turbo hangs below the header
+        : bm.clone().addScaledVector(down, 0.8 * (1 - Math.max(0, bm.dot(down)))).normalize().addScaledVector(ex, 0.6).normalize();
     const row = ex.clone().addScaledVector(axis, -ex.dot(axis)).normalize();
     const nhat = new V3().crossVectors(row, axis).normalize();
     if (nhat.dot(bm.clone().add(am.normalize())) < 0) nhat.negate();
@@ -199,7 +204,7 @@ function routePipes(H, cyl, B, opt = {}) {
     order.forEach((i, j) => { laneOf[i] = row.clone().multiplyScalar(j * pitchL - ring); });
     // as far out as the shortest pipe allows
     let c = mean.clone();
-    for (let D = opt.radial ? 0.6 : 0.27; D >= 0.05; D -= 0.01) {
+    for (let D = opt.radial ? 0.6 : scrollColl ? 0.16 : 0.27; D >= 0.05; D -= 0.01) {
       c = mean.clone().addScaledVector(axis, D);
       if (grp.every((i) => primaryCurve(cyl[i], c.clone().add(laneOf[i]), axis, nhat, sp.primary_len[i], 0).getLength() <= sp.primary_len[i])) break;
     }
@@ -356,68 +361,240 @@ function routePipes(H, cyl, B, opt = {}) {
     volShape[mergeIdx] = { type: 'sphere', r: Math.max(0.7 * sp.secondary_d, 0.6 * sp.mid_d) };
     secs.forEach(({ p, k }) => { paths[k] = fitCurve((beta) => one(p, lo, beta), p.len); });
   }
-  // ---- turbocharger (engines with `boost.kind == "turbo"`): the turbine housing just past its
-  // inlet (the collector, or the merged turbine inlet), the compressor beside it, and the charge
-  // pipes run as plain bends to an intercooler ahead of the engine and on to the throttle. The
-  // places are drawn, not measured; the gas in them is simulated.
-  // Parallel twin turbos: the second turbo's parts carry the tag "_t2"; each sits at its own
-  // bank's collector, with its own intercooler beside the first.
+  // ---- forced induction. Every part drawn here is a simulated element (volume, pipe, compressor,
+  // turbine, shaft, intercooler, throttle, blower rotors); where it sits is a drawing choice made
+  // from the layout of the real engines (viz/README.md says which positions are sourced).
+  const boost = { turbos: [], coolers: [], blower: null };
+  const xFront = xMin - 0.75 * B;   // about where the crank's front pulley is
+  const capsuleR = (V, len) => { let r = Math.sqrt(V / (Math.PI * len)); for (let k = 0; k < 30; k++) r = Math.sqrt(V / (Math.PI * (len + 4 * r / 3))); return r; };
+  const plenumFront = () => (plenumIdx !== undefined && volShape[plenumIdx] ? volPos[plenumIdx].x - volShape[plenumIdx].len / 2 - volShape[plenumIdx].r : xFront);
+  // Boost pipes are drawn as tubing: straight runs joined by bends of about radius r (each corner
+  // replaced by a short fillet), routed low and close to the engine; spare length is taken up by
+  // moving a corner along the engine or the bay, never by bowing out into open air.
+  const bendPath = (ws, r = 0.05) => {
+    const pts = [ws[0]];
+    for (let i = 1; i < ws.length - 1; i++) {
+      const a = ws[i - 1], q = ws[i], b = ws[i + 1];
+      const din = q.clone().sub(a), dout = b.clone().sub(q), li = din.length(), lo = dout.length();
+      if (li < 1e-6 || lo < 1e-6) continue;
+      const rr = Math.min(r, 0.45 * li, 0.45 * lo);
+      din.multiplyScalar(1 / li); dout.multiplyScalar(1 / lo);
+      pts.push(q.clone().addScaledVector(din, -rr), q.clone().addScaledVector(din, -0.3 * rr).addScaledVector(dout, 0.3 * rr), q.clone().addScaledVector(dout, rr));
+    }
+    pts.push(ws[ws.length - 1]);
+    return crv(pts);
+  };
+  const routePipe = (k, len, make) => { paths[k] = fitCurve((beta) => bendPath(make(beta)), len); startPts[k] = paths[k].getPointAt(0); endPts[k] = paths[k].getPointAt(1); };
+  const yLow = -(1.1 * B + 0.03);      // just under the crankcase
+  const fitPipe = (k, len, a, ta, b, tb, bow) => {
+    // a gentle bend from a (leaving along ta) to b (arriving along tb), bowed along `bow` until its
+    // drawn length is the pipe's physical length (or as short as the ends allow)
+    const d = a.distanceTo(b), s = Math.min(0.09, 0.3 * d);
+    const a1 = a.clone().addScaledVector(ta, s), b1 = b.clone().addScaledVector(tb, -s);
+    paths[k] = fitCurve((beta) => crv([a, a1, a1.clone().lerp(b1, 0.5).addScaledVector(bow, beta), b1, b]), len);
+    startPts[k] = a; endPts[k] = b;
+  };
+  // ---- turbochargers (engines with `boost.kind == "turbo"`). Each turbo is drawn as it is built:
+  // a turbine housing (a snail-shell volute) fed tangentially by its bank's collector, a centre
+  // section on the shaft, and a compressor housing on the same shaft, ahead of the turbine, its
+  // inlet facing forward to its air filter box and its outlet leaving tangentially to the charge
+  // pipe. The turbine volute is part of the collector volume (the simulator adds the volute's
+  // volume to the turbine inlet) and is coloured by it; the turbine outlet volume is the short can
+  // behind the turbine; the compressor outlet volume is the compressor volute. Parallel twin
+  // turbos: the second turbo's parts carry the tag "_t2" and take the second bank's collector.
   const tTags = ['', '_t2'].filter((tg) => volByName[`turbine_out${tg}`] !== undefined);
   if (tTags.length) {
     const twin = tTags.length > 1;
+    const T = H.turbo || {};
+    const rw = 0.5 * (T.d2 || 0.05);           // compressor wheel radius (header: d2)
+    const tsp = (sp.boost && sp.boost.turbo) || {};
+    const rwT = 0.5 * (tsp.turbine_d || 0.9 * 2 * rw);   // turbine wheel radius (the definition's derived size)
+    const chargeR = 0.5 * Math.max(0.03, ...pipesOf('charge').map(({ p }) => p.dia[0]));
+    const ax = new V3(-1, 0, 0);               // shaft axis, from the turbine toward the compressor (forward)
+    const e1 = new V3(0, 1, 0), e2 = new V3(0, 0, 1);   // the volutes' plane (normal to the shaft)
+    // throttle: the charge pipes meet in the throttle inlet volume at the front of the plenum; the
+    // throttle body (its plate turns with the throttle) joins it to the plenum
     const ti = volByName.throttle_in;
-    const ab = volByName.airbox;
-    const neck = ab !== undefined && volShape[ab] ? volShape[ab].neck : null;
+    const ai = volByName.airbox;
+    if (ai !== undefined && volShape[ai]) delete volShape[ai].neck;   // the air filter feeds the compressor, not the plenum
+    let tiPos = null, tiR = 0;
     if (ti !== undefined && plenumIdx !== undefined) {
-      const pc = volPos[plenumIdx];
-      volPos[ti] = neck ? new V3(neck.x1, pc.y, pc.z) : pc.clone().add(new V3(-0.15, 0, 0));
-      volShape[ti] = { type: 'sphere', r: 0.025 };
+      const pc = volPos[plenumIdx], ps = volShape[plenumIdx];
+      tiR = Math.cbrt(3 * H.volumes[ti].vol / (4 * Math.PI));
+      const x1 = pc.x - ps.len / 2 - ps.r * 0.5, x0 = x1 - 0.07;
+      tiPos = new V3(x0 - 0.8 * tiR, pc.y, pc.z);
+      volPos[ti] = tiPos;
+      volShape[ti] = { type: 'sphere', r: tiR, neck: { x0: x0 - 0.2 * tiR, x1, r: sp.throttle_d / 2 } };
     }
+    // a housing's spiral: given the open end X of its tangential port and the direction T pointing
+    // out of that port, and which way the spiral turns (h), where its centre goes
+    const voluteAt = (X, Tout, h, Rh, r1, exitLen) => {
+      const t1 = Tout.dot(e1), t2 = Tout.dot(e2);
+      const n = e1.clone().multiplyScalar(h * t2).addScaledVector(e2, -h * t1).normalize();
+      const C = X.clone().addScaledVector(Tout, -exitLen).addScaledVector(n, -(Rh + r1));
+      return { C, phiEnd: Math.atan2(n.dot(e2), n.dot(e1)) };
+    };
     tTags.forEach((tg, j) => {
       const yIdx = volByName[`turbine_out${tg}`];
       const xIn = volByName[`turbine_in${tg}`] ?? volByName[`collector${j + 1}`];
-      const s0 = volOut[xIn] || volPos[xIn] || new V3(xMax + 0.2, -0.1, 0.2);
-      const ax = collAxis[xIn] || ex.clone();
-      const tPos = s0.clone().addScaledVector(ax, 0.06);
-      volPos[yIdx] = tPos;
-      volOut[yIdx] = tPos.clone().addScaledVector(ax, 0.05);
-      collAxis[yIdx] = ax;
-      volShape[yIdx] = { type: 'sphere', r: 0.05 };
+      const E = (volOut[xIn] || volPos[xIn] || new V3(xMax + 0.2, -0.1, 0.2)).clone();
+      // flow direction into the turbine, in the volute's plane
+      const d = (collAxis[xIn] || new V3(0, -1, 0)).clone().addScaledVector(ax, -(collAxis[xIn] || new V3(0, -1, 0)).dot(ax));
+      if (d.lengthSq() < 0.05) d.set(0, -1, 0);
+      d.normalize();
+      const side = Math.sign(E.z) || (j ? -1 : 1);
+      // turbine housing: its inlet is the collector's outlet; of the two ways the spiral can turn,
+      // the one that tucks the housing lower
+      const turb = { Rh: 1.2 * rwT, r0: 0.28 * rwT, r1: 0.68 * rwT, rPort: volShape[xIn] && volShape[xIn].b ? volShape[xIn].b : 0.7 * rwT, exitLen: 0.035, sweep: 5.6 };
+      const cand = [1, -1].map((h) => ({ h, ...voluteAt(E, d.clone().negate(), h, turb.Rh, turb.r1, turb.exitLen) }));
+      const score = (q) => Math.abs(q.C.y) + Math.abs(q.C.z) + (Math.abs(q.C.z) - (turb.Rh + 2 * turb.r1) < 1.1 * B ? 10 : 0);   // never into the crankcase
+      const tv = score(cand[0]) <= score(cand[1]) ? cand[0] : cand[1];
+      Object.assign(turb, tv, { e1, e2, ax, X: E });
+      // centre section, then the compressor housing ahead on the same shaft; its spiral turns the
+      // other way (the wheels share one rotation; flow spirals outward in the compressor and
+      // inward in the turbine), and its outlet leaves outboard and up
+      const comp = { Rh: 1.25 * rw, r0: 0.25 * rw, r1: 0.7 * rw, rPort: chargeR, exitLen: 0.04, sweep: 5.6 };
+      const Lc = 1.7 * rw;
+      const Cc = tv.C.clone().addScaledVector(ax, turb.r1 + Lc + comp.r1);
+      // outlet: outboard and down, so its charge pipe drops and runs forward low along the bay
+      const u = new V3(0, -0.5, side).normalize();
+      const hC = -tv.h;
+      const nC = e1.clone().multiplyScalar(hC * u.dot(e2)).addScaledVector(e2, -hC * u.dot(e1)).normalize();
+      const Xc = Cc.clone().addScaledVector(nC, comp.Rh + comp.r1).addScaledVector(u, comp.exitLen);
+      Object.assign(comp, { C: Cc, h: hC, phiEnd: Math.atan2(nC.dot(e2), nC.dot(e1)), e1, e2, ax, X: Xc, u });
+      // the turbine housing belongs to the collector volume (drawn with it); the compressor housing is comp_out
+      if (volShape[xIn]) volShape[xIn].volute = { ...turb, C: tv.C.clone().sub(volPos[xIn]) };
       const ci = volByName[`comp_out${tg}`];
       if (ci !== undefined) {
-        volPos[ci] = tPos.clone().add(new V3(-0.02, 0.07, 0));
-        volShape[ci] = { type: 'sphere', r: 0.045 };
+        volPos[ci] = Cc.clone();
+        volShape[ci] = { type: 'volute', ...comp, C: new V3() };
       }
+      // turbine outlet: a can behind the turbine, along the shaft; the downpipe leaves its end
+      const rCan = Math.max(0.028, 1.05 * rwT), lenCan = Math.min(0.14, Math.max(0.06, H.volumes[yIdx].vol / (Math.PI * rCan * rCan)));
+      const back = ax.clone().negate();
+      const c0 = tv.C.clone().addScaledVector(back, turb.r1 * 0.8);
+      volPos[yIdx] = c0.clone().addScaledVector(back, lenCan / 2);
+      volOut[yIdx] = c0.clone().addScaledVector(back, lenCan);
+      collAxis[yIdx] = back.clone();
+      volShape[yIdx] = { type: 'can', r: rCan, len: lenCan, axis: back.clone() };
+      // air filter box: ahead of the compressor, raised and toward the outside, flat; its clean-air
+      // duct (part of the same volume) runs back to the compressor inlet
+      const aIdx = volByName[`airbox${tg}`];
+      const inlet = Cc.clone().addScaledVector(ax, comp.r1 * 0.9);
+      if (aIdx !== undefined) {
+        const V = H.volumes[aIdx].vol, sy = Math.cbrt(V / (2.0 * 1.4)), sx = 2.0 * sy, sz = 1.4 * sy;
+        const pos = new V3(inlet.x - 0.07 - sx / 2, inlet.y + 0.07 + sy / 2, inlet.z + side * 0.02);
+        volPos[aIdx] = pos;
+        const ductFrom = pos.clone().add(new V3(sx / 2, -sy * 0.15, 0));
+        volShape[aIdx] = { type: 'airbox', side: sx, size: [sx, sy, sz], duct: { from: ductFrom, to: inlet.clone(), r: Math.min(0.9 * comp.Rh, 0.04) } };
+      }
+      const turbo = { tag: tg, turb: { ...turb, C: tv.C.clone() }, comp: { ...comp, C: Cc.clone() }, ax, rw, rwT, Lc, inlet, side };
+      boost.turbos.push(turbo);
+      // intercooler: two tanks (the inlet volume and the intercooler volume) either end of a core.
+      // One per turbo: low and wide at the front corners, beside the radiator, on a twin; one front
+      // mount across the nose on a single turbo
       const ii = volByName[`ic_in${tg}`], io = volByName[`intercooler${tg}`];
-      if (io !== undefined && plenumIdx !== undefined) {
-        const front = new V3(xMin - 0.35, volPos[plenumIdx].y - 0.3, twin ? (j - 0.5) * 0.5 : 0);
-        volPos[io] = front;
-        volShape[io] = { type: 'capsule', r: 0.05, len: 0.25 };
-        if (ii !== undefined) {
-          volPos[ii] = front.clone().add(new V3(0, -0.12, 0));
-          volShape[ii] = { type: 'sphere', r: 0.035 };
-        }
+      if (io !== undefined && ii !== undefined) {
+        const W = twin ? 0.17 : 0.34, Hc = twin ? 0.11 : 0.14, Tk = 0.045;
+        // twin: 0.55 m ahead of the engine's front face and wide, as the definition's packaging
+        // estimate has them (the charge pipes' lengths come from the same estimate)
+        // single: in the lower front valance, 0.35 m ahead of the front face (the Audi's definition)
+        const cx = twin ? xFront - 0.5 : xFront - 0.33, cy = twin ? -0.1 : -0.1, cz = twin ? side * 0.42 : 0;
+        const rin = capsuleR(H.volumes[ii].vol, Hc), rout = capsuleR(H.volumes[io].vol, Hc);
+        const sIn = twin ? side : side;     // the inlet tank sits on the turbo's side
+        const pin = new V3(cx, cy, cz + sIn * (W / 2 + 0.6 * rin)), pout = new V3(cx, cy, cz - sIn * (W / 2 + 0.6 * rout));
+        volPos[ii] = pin; volShape[ii] = { type: 'tank', r: rin, len: Hc, axis: new V3(0, 1, 0) };
+        volPos[io] = pout; volShape[io] = { type: 'tank', r: rout, len: Hc, axis: new V3(0, 1, 0) };
+        boost.coolers.push({ tag: tg, c: new V3(cx, cy, cz), W, H: Hc, T: Tk });
       }
     });
-    const bend = (a, b, lift) => crv([a, a.clone().lerp(b, 0.33).add(new V3(0, lift, 0)), a.clone().lerp(b, 0.66).add(new V3(0, lift, 0)), b]);
+    // charge pipes. Compressor to intercooler: down out of the outlet, forward low along the side of
+    // the bay, into the inlet tank from behind; spare length moves the low run outboard. Intercooler
+    // to throttle: back from the outlet tank, then up to the throttle inlet, entering it from the
+    // front (a twin's two pipes side by side); spare length moves the corner from the straight
+    // diagonal toward "low back to the engine's front face, then up it", so the pipe hugs the engine.
     pipesOf('charge').forEach(({ p, k }) => {
-      const a = volPos[p.left.index], b = volPos[p.right.index];
-      if (a && b) paths[k] = bend(a, b, -0.08);
+      const L = p.left.index, R = p.right.index, ln = H.volumes[L].name, tg = ln.endsWith('_t2') ? '_t2' : '';
+      const tb = boost.turbos.find((q) => q.tag === tg) || boost.turbos[0];
+      const back = new V3(1, 0, 0);
+      const tankPort = (i) => (volShape[i] && volShape[i].type === 'tank' ? volPos[i].clone().addScaledVector(back, volShape[i].r) : volPos[i].clone());
+      if (/^comp_out/.test(ln) && volPos[R]) {
+        const X = tb.comp.X, end = tankPort(R), run = end.y;
+        const x1 = X.clone().addScaledVector(tb.comp.u, 0.04), q = new V3(end.x + 0.09, run, end.z);
+        const m = x1.clone().lerp(q, 0.5); m.y = run;
+        routePipe(k, p.len, (beta) => [X, x1, m.clone().add(new V3(0, 0, tb.side * beta)), q, end]);
+      } else if (volPos[L] && volPos[R]) {
+        const a = tankPort(L), sd = Math.sign(volPos[L].z - volPos[R].z) || tb.side;
+        const into = R === ti ? new V3(1, 0.2, 0).normalize() : new V3(0, 0, -sd);
+        const b = R === ti ? volPos[R].clone().addScaledVector(into, -0.75 * tiR).add(new V3(0, 0, twin ? sd * 0.8 * tiR : 0)) : volPos[R].clone();
+        const a1 = a.clone().addScaledVector(back, 0.06), b1 = b.clone().addScaledVector(into, -0.07);
+        const corner = new V3(b1.x - 0.02, a1.y, b1.z);       // low, right under the throttle, at the engine's front
+        const mid = a1.clone().lerp(b1, 0.5);
+        routePipe(k, p.len, (beta) => [a, a1, mid.clone().lerp(corner, Math.min(1, beta)).add(new V3(-Math.max(0, beta - 1), 0, 0)), b1, b]);
+      }
     });
+    // blow-off valves: on the throttle inlet, one each side of it, venting up through their short pipes
     pipesOf('bov').forEach(({ p, k }, j) => {
-      const a = volPos[ti] ? volPos[ti].clone().add(new V3(0, 0.03, twin ? (j - 0.5) * 0.06 : 0)) : null;
-      if (!a) return;
+      if (!tiPos) return;
+      const s = twin ? (j ? -1 : 1) : 1;
+      const a = tiPos.clone().add(new V3(-0.15 * tiR, 0.85 * tiR, twin ? s * 0.62 * tiR : 0));
       const bi = p.left.type === 'volume' ? p.left.index : undefined;
-      if (bi !== undefined) { volPos[bi] = a; volShape[bi] = { type: 'sphere', r: 0.012 }; }
+      if (bi !== undefined) { volPos[bi] = a; volShape[bi] = { type: 'sphere', r: Math.max(0.012, Math.cbrt(3 * H.volumes[bi].vol / (4 * Math.PI))) }; }
       paths[k] = new THREE.LineCurve3(a, a.clone().add(new V3(0, p.len, 0)));
+      startPts[k] = a; endPts[k] = paths[k].getPointAt(1);
     });
   }
+  // ---- positive-displacement supercharger (`boost.kind` "roots" or "twin_screw", throttle before
+  // the blower, GM's layout): the blower sits on top of the plenum (its outlet), rotors along the
+  // crank; the drive pulley is at the front, belted to the crank; the inlet volume and throttle
+  // body are at its other end, then the air filter box. The rotors turn with the crank at the
+  // drive ratio, as the simulator has them.
+  const biIdx = volByName.blower_in;
+  if (H.boost && biIdx !== undefined && plenumIdx !== undefined && volShape[plenumIdx]) {
+    const bs = H.boost, pc = volPos[plenumIdx], ps = volShape[plenumIdx];
+    const lobes = bs.lobes || (bs.kind === 'roots' ? 3 : 4), rotors = bs.rotors || 2;
+    const Lr = 0.19;                                           // rotor length: estimate
+    const Rt = Math.sqrt((bs.displacement || 0.0015) / (0.9 * Math.PI * Lr));   // tip radius from displacement per revolution
+    const Rm = 0.75 * Rt, A = 0.25 * Rt, a = 2 * Rm * 1.035, wall = 0.007;
+    const cy = pc.y + ps.r + 0.012 + Rt + wall;
+    const cx = pc.x, x0 = cx - Lr / 2 - 0.015, x1 = cx + Lr / 2 + 0.015;
+    // inlet volume at the rear end (a box of the simulated volume), throttle body behind it, then the air filter box
+    const Vi = H.volumes[biIdx].vol, ih = 2 * (Rt + wall) * 0.9, iw = 2 * (a / 2 + Rt + wall) * 0.8, il = Vi / (ih * iw);
+    volPos[biIdx] = new V3(x1 + il / 2, cy, 0);
+    volShape[biIdx] = { type: 'block', size: [il, ih, iw] };
+    const ai = volByName.airbox;
+    if (ai !== undefined) {
+      const side = Math.cbrt(H.volumes[ai].vol);
+      const nx0 = x1 + il, nx1 = nx0 + 0.08;
+      volPos[ai] = new V3(nx1 + side / 2, cy, 0);
+      volShape[ai] = { type: 'box', side, rear: true, neck: { x0: nx0, x1: nx1, r: sp.throttle_d / 2 } };
+    }
+    boost.blower = { kind: bs.kind, lobes, rotors, Lr, Rt, Rm, A, a, wall, cy, cx, x0, x1, helix: (bs.helix ?? 60) * RAD, ratio: bs.drive_ratio || 2,
+      outletTop: pc.y + ps.r, plenumR: ps.r, plenumLen: ps.len };
+  }
+  // the air filter boxes moved above: their snorkels leave the end of the box that faces the open
+  // air, turn down and run on low, so the fresh-air duct follows the bay instead of standing out
+  if (tTags.length || boost.blower) pipesOf('snorkel').forEach(({ p, k }) => {
+    const ab = volPos[p.right.index], sh = volShape[p.right.index];
+    const sgn = sh.rear ? 1 : -1, sy = sh.size ? sh.size[1] : sh.side;
+    const end = new V3(ab.x + sgn * sh.side / 2, ab.y - 0.25 * sy, ab.z);
+    // a turbo's box folds its duct outboard (toward the wing), a blower's down
+    const fold = sh.rear ? new V3(0, -1, 0) : new V3(0, 0, Math.sign(ab.z) || 1);
+    const drop = Math.min(0.16, 0.3 * p.len), f = end.clone().add(new V3(sgn * 0.07, 0, 0)).addScaledVector(fold, drop);
+    routePipe(k, p.len, (beta) => [f.clone().add(new V3(sgn * (0.05 + beta), 0, 0)), f, end.clone().add(new V3(sgn * 0.07, 0, 0)), end]);
+  });
   const outs = pipesOf('outlet');
   outs.forEach(({ p, k }, j) => {
     const s = volOut[p.left.index];
     const fromMerge = p.left.index === mergeIdx;
     const zoff = fromMerge && outs.length > 1 ? (j - (outs.length - 1) / 2) * 0.32 : 0;
     const ax = fromMerge ? null : collAxis[p.left.index];
+    if (ax && tTags.length) {
+      // a turbo's downpipe: out of the turbine outlet, down under the sump, then straight back
+      const y = Math.min(s.y - 0.05, yLow);
+      paths[k] = fitCurve((beta) => bendPath([s, s.clone().addScaledVector(ax, 0.05), new V3(s.x + 0.12, y, s.z), new V3(s.x + 0.12 + 0.3 * p.len + beta, y, s.z)], 0.06), p.len);
+      return;
+    }
     paths[k] = fitCurve((beta) => {
       const L = 0.4 * p.len + beta;
       if (ax) {
@@ -428,7 +605,7 @@ function routePipes(H, cyl, B, opt = {}) {
     }, p.len);
   });
 
-  return { primEnd, volOut, volPos, volShape, paths, startPts, endPts, plenumIdx, xMin, xMax };
+  return { primEnd, volOut, volPos, volShape, paths, startPts, endPts, plenumIdx, xMin, xMax, boost };
 }
 
 // ---------------------------------------------------------------- meshes
@@ -443,11 +620,11 @@ export const glass = new THREE.MeshStandardMaterial({ color: 0xb9d4ff, metalness
 // additive and shell-only, for the big intake volumes that should recede.
 const DATA_VERT = `
 attribute vec3 pcol; attribute float pheat;
-uniform vec3 uCol; uniform float uUseAttr;
+uniform vec3 uCol; uniform float uUseAttr; uniform float uHeat;
 varying vec3 vC; varying vec3 vN; varying vec3 vV; varying float vH;
 void main() {
   vC = mix(uCol, pcol, uUseAttr);
-  vH = pheat * uUseAttr;
+  vH = pheat * uUseAttr + uHeat;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   vN = normalMatrix * normal; vV = -mv.xyz;
   gl_Position = projectionMatrix * mv;
@@ -475,7 +652,7 @@ function dataMaterial(useAttr, ghost = false) {
   return new THREE.ShaderMaterial({
     vertexShader: DATA_VERT, fragmentShader: DATA_FRAG, side: THREE.DoubleSide,
     transparent: ghost, depthWrite: !ghost, blending: ghost ? THREE.AdditiveBlending : THREE.NormalBlending,
-    uniforms: { uCol: { value: new THREE.Vector3(0, 0, 0) }, uUseAttr: { value: useAttr ? 1 : 0 }, uGhost: { value: ghost ? 1 : 0 } },
+    uniforms: { uCol: { value: new THREE.Vector3(0, 0, 0) }, uUseAttr: { value: useAttr ? 1 : 0 }, uGhost: { value: ghost ? 1 : 0 }, uHeat: { value: 0 } },
   });
 }
 
@@ -722,6 +899,114 @@ function buildTube(curve, pipe) {
   return { geometry: g, frac, rings, RS, col: ca, heat: ha };
 }
 
+// ---------------------------------------------------------------- forced-induction parts
+/** A tube along the points `pts` with a radius per point (parallel-transport frames), closed
+ *  with flat caps at both ends. */
+function sweepTube(pts, radii, RS = 18) {
+  const n = pts.length, pos = [], nor = [], idx = [];
+  const T = new V3(), Tp = new V3(), N = new V3(), Bn = new V3(), axis = new V3();
+  const tan = (j) => pts[Math.min(n - 1, j + 1)].clone().sub(pts[Math.max(0, j - 1)]).normalize();
+  for (let j = 0; j < n; j++) {
+    T.copy(tan(j));
+    if (j === 0) {
+      N.set(0, 1, 0); if (Math.abs(T.y) > 0.9) N.set(1, 0, 0);
+      N.addScaledVector(T, -N.dot(T)).normalize();
+    } else {
+      axis.crossVectors(Tp, T);
+      const sl = axis.length();
+      if (sl > 1e-9) N.applyAxisAngle(axis.multiplyScalar(1 / sl), Math.asin(Math.min(1, sl)));
+      N.addScaledVector(T, -N.dot(T)).normalize();
+    }
+    Tp.copy(T);
+    Bn.crossVectors(T, N);
+    for (let k = 0; k <= RS; k++) {
+      const a = 2 * Math.PI * k / RS, cs = Math.cos(a), sn = Math.sin(a);
+      const nx = N.x * cs + Bn.x * sn, ny = N.y * cs + Bn.y * sn, nz = N.z * cs + Bn.z * sn;
+      pos.push(pts[j].x + radii[j] * nx, pts[j].y + radii[j] * ny, pts[j].z + radii[j] * nz);
+      nor.push(nx, ny, nz);
+    }
+    if (j > 0) for (let k = 0; k < RS; k++) { const a0 = (j - 1) * (RS + 1) + k, b0 = j * (RS + 1) + k; idx.push(a0, b0, a0 + 1, b0, b0 + 1, a0 + 1); }
+  }
+  // end caps
+  for (const [j, sgn] of [[0, -1], [n - 1, 1]]) {
+    const c = pos.length / 3, t = tan(j).multiplyScalar(sgn);
+    pos.push(pts[j].x, pts[j].y, pts[j].z); nor.push(t.x, t.y, t.z);
+    for (let k = 0; k < RS; k++) { const r0 = j * (RS + 1) + k; idx.push(c, r0, r0 + 1); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setIndex(idx);
+  return g;
+}
+
+/** A turbo housing's snail shell, relative to its centre: a spiral tube round the wheel whose
+ *  section grows from r0 to r1 over `sweep` radians, ending in a straight tangential port, and the
+ *  disc it wraps round (the wheel's shroud and back plate). `s` holds e1, e2 (the plane), ax (the
+ *  shaft), Rh (hub radius), r0, r1, sweep, h (turning sense), phiEnd and exitLen. */
+function voluteGeometries(s) {
+  const pts = [], radii = [], N = 48;
+  const at = (phi, rho) => s.e1.clone().multiplyScalar(rho * Math.cos(phi)).addScaledVector(s.e2, rho * Math.sin(phi));
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, r = s.r0 + (s.r1 - s.r0) * Math.pow(t, 0.8);
+    pts.push(at(s.phiEnd - s.h * s.sweep * (1 - t), s.Rh + r));
+    radii.push(r);
+  }
+  const end = pts[N], tdir = s.e1.clone().multiplyScalar(-Math.sin(s.phiEnd)).addScaledVector(s.e2, Math.cos(s.phiEnd)).multiplyScalar(s.h);
+  const rp = s.rPort || s.r1;
+  for (let i = 1; i <= 6; i++) { const u = i / 6; pts.push(end.clone().addScaledVector(tdir, s.exitLen * u)); radii.push(s.r1 + (rp - s.r1) * u * u * (3 - 2 * u)); }
+  const spiral = sweepTube(pts, radii, 18);
+  const hubR = s.Rh + 0.35 * s.r0, hubT = 1.5 * s.r1;
+  const hub = new THREE.CylinderGeometry(hubR, hubR * 0.92, hubT, 40, 1);
+  hub.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), s.ax));
+  return [spiral, hub];
+}
+
+/** One rotor of a Roots blower: `lobes` rounded lobes (radius Rm + A cos(lobes th)) twisted by
+ *  `helix` radians over its length, along X, centred on the origin. */
+function rotorGeometry(Rm, A, lobes, len, helix, NA = 72, NL = 14) {
+  const pos = [], idx = [];
+  for (let j = 0; j <= NL; j++) {
+    const u = j / NL, x = -len / 2 + len * u, tw = helix * (u - 0.5);
+    for (let i = 0; i < NA; i++) {
+      const th = 2 * Math.PI * i / NA, r = Rm + A * Math.cos(lobes * th);
+      pos.push(x, r * Math.cos(th + tw), r * Math.sin(th + tw));
+    }
+    if (j > 0) for (let i = 0; i < NA; i++) { const a0 = (j - 1) * NA + i, a1 = (j - 1) * NA + (i + 1) % NA, b0 = j * NA + i, b1 = j * NA + (i + 1) % NA; idx.push(a0, a1, b0, a1, b1, b0); }
+  }
+  for (const [j, sgn] of [[0, -1], [NL, 1]]) {
+    const c = pos.length / 3;
+    pos.push(-len / 2 + len * j / NL, 0, 0);
+    for (let i = 0; i < NA; i++) { const a0 = j * NA + i, a1 = j * NA + (i + 1) % NA; if (sgn > 0) idx.push(c, a0, a1); else idx.push(c, a1, a0); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/** Geometries for one of the forced-induction volume shapes, relative to the volume's position
+ *  p, and whether it is drawn as a ghost (the big intake volumes that should recede). */
+function boostVolumeGeometries(s, p) {
+  if (s.type === 'volute') return { geos: voluteGeometries(s), ghost: false };
+  if (s.type === 'can' || s.type === 'tank') {
+    const g = new THREE.CapsuleGeometry(s.r, Math.max(0.001, s.len - (s.type === 'tank' ? 0 : 1.2 * s.r)), 8, 28);
+    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), s.axis));
+    return { geos: [g], ghost: s.type === 'tank' };
+  }
+  if (s.type === 'block') return { geos: [new THREE.BoxGeometry(...s.size)], ghost: false };
+  if (s.type === 'airbox') {
+    const geos = [new THREE.BoxGeometry(...s.size)];
+    if (s.duct) {
+      const a = s.duct.from.clone().sub(p), b = s.duct.to.clone().sub(p), d = Math.min(0.07, 0.3 * a.distanceTo(b));
+      geos.push(new THREE.TubeGeometry(crv([a, a.clone().add(new V3(d, 0, 0)), b.clone().add(new V3(-d, 0, 0)), b]), 24, s.duct.r, 16, false));
+    }
+    return { geos, ghost: true };
+  }
+  return null;
+}
+
 
 // ---------------------------------------------------------------- Wankel rotary
 // Plane normal to the shaft, coordinates (f, s): the housing bore is the two-lobe epitrochoid
@@ -964,6 +1249,189 @@ function buildWankel(L, opts) {
   return { group: g, rotors, x0, x1, flank0 };
 }
 
+// ---------------------------------------------------------------- forced induction: colour and parts
+/** The charge side of a boosted engine (compressor or blower outlet through to the intake
+ *  valves) sits at boost pressure for as long as the throttle is open. On the exhaust's scale it
+ *  would be a steady white glow over the whole engine, so it has its own: the same hues (warm
+ *  above ambient), full colour at `pFull` (a little above the engine's boost target) and a peak
+ *  brightness below the bloom threshold. Suction is drawn exactly as everywhere else. */
+const HUE_CHARGE = [[0, [0.04, 0.30, 0.30]], [0.5, [0.10, 0.62, 0.56]], [1, [0.50, 0.95, 0.85]]];
+export const chargeConfig = { margin: 1.25, gain: 0.7 };
+export function chargeLookFor(H) {
+  const b = (H.spec && H.spec.boost) || {};
+  const target = b.boost_bar || (H.turbo ? 0.8 : 0.5);
+  return { pFull: Math.max(config.pFull, chargeConfig.margin * target), gain: chargeConfig.gain };
+}
+export function chargeColor(dpBar, out, o, look) {
+  if (dpBar < 0 || !look) { pressureColor(dpBar, out, o); return; }
+  const s = Math.min(1, dpBar / look.pFull);
+  ramp(HUE_CHARGE, s, out, o);
+  const k = look.gain * Math.pow(s, config.pExp);
+  out[o] *= k; out[o + 1] *= k; out[o + 2] *= k;
+}
+
+/** The parts of a supercharger or turbocharger that carry no gas of their own: a turbo's centre
+ *  section, compressor wheel, clamps and wastegate actuator; an intercooler's core; a Roots
+ *  blower's case, rotors, drive pulley and belt. Returns the group, points for framing and an
+ *  update that turns the blower's rotors with the crank at the drive ratio. */
+function buildBoostParts(L, H, crank, root) {
+  const bo = L.boost || { turbos: [], coolers: [] }, g = new THREE.Group(), engPts = [];
+  root.add(g);
+  const Y = new V3(0, 1, 0), Z = new V3(0, 0, 1);
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x15171b, metalness: 0.1, roughness: 0.8 });
+  const coreMat = new THREE.MeshStandardMaterial({ color: 0x3a4048, metalness: 0.9, roughness: 0.55 });
+  const plateMat = new THREE.MeshStandardMaterial({ color: 0xbfc5cd, metalness: 1.0, roughness: 0.36, side: THREE.DoubleSide });
+  const cylAt = (r, len, axis, centre, mat, seg = 32, r2 = r) => {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r2, r, len, seg), mat);
+    m.quaternion.setFromUnitVectors(Y, axis.clone().normalize());
+    m.position.copy(centre);
+    g.add(m);
+    return m;
+  };
+  const ringAt = (R, tube, axis, centre, mat) => {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(R, tube, 8, 48), mat);
+    m.quaternion.setFromUnitVectors(Z, axis.clone().normalize());
+    m.position.copy(centre);
+    g.add(m);
+    return m;
+  };
+  for (const t of bo.turbos) {
+    const { turb, comp, ax, rw } = t;
+    const a = turb.C.clone().addScaledVector(ax, 0.75 * turb.r1), b = comp.C.clone().addScaledVector(ax, -0.75 * comp.r1);
+    // centre section (bearing housing) on the shaft, with its oil and water flange
+    cylAt(0.55 * rw, a.distanceTo(b), ax, a.clone().lerp(b, 0.5), darkSteel, 28);
+    cylAt(0.8 * rw, 0.22 * rw, ax, a.clone().lerp(b, 0.45), darkSteel, 28);
+    // V-band clamps where each housing meets it
+    ringAt(turb.Rh + 0.3 * turb.r0, 0.0035, ax, a, alu);
+    ringAt(comp.Rh + 0.3 * comp.r0, 0.0035, ax, b, alu);
+    // compressor wheel in the inlet: hub and six blades, still (it turns at up to some 200,000 rpm)
+    const wheel = new THREE.Group();
+    wheel.add(new THREE.Mesh(new THREE.CylinderGeometry(0.16 * rw, 0.42 * rw, 0.9 * comp.r1, 20), alu));
+    for (let i = 0; i < 6; i++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.0016, 0.9 * comp.r1, 0.62 * rw), alu);
+      const q = 2 * Math.PI * i / 6;
+      blade.position.set(0.5 * rw * Math.sin(q), 0, 0.5 * rw * Math.cos(q));
+      blade.rotation.set(0, q, 0.35);
+      wheel.add(blade);
+    }
+    wheel.quaternion.setFromUnitVectors(Y, ax);
+    wheel.position.copy(comp.C).addScaledVector(ax, 0.5 * comp.r1);
+    g.add(wheel);
+    ringAt(Math.min(0.9 * comp.Rh, 0.04), 0.004, ax, t.inlet, alu);
+    // wastegate actuator: a can below the compressor, its rod reaching back to the turbine housing
+    const w = new V3(0, -1, 0);
+    const canC = comp.C.clone().addScaledVector(w, comp.Rh + comp.r1 + 0.02);
+    cylAt(0.017, 0.032, ax, canC, alu, 24);
+    const rodEnd = turb.C.clone().addScaledVector(w, turb.Rh + 0.4 * turb.r1);
+    cylAt(0.0025, canC.distanceTo(rodEnd), rodEnd.clone().sub(canC), canC.clone().lerp(rodEnd, 0.5), steel, 8);
+    for (const c of [turb, comp]) {
+      const R = c.Rh + 2 * c.r1;
+      engPts.push(c.C.clone().add(new V3(0, R, R)), c.C.clone().add(new V3(0, -R, -R)));
+    }
+  }
+  // intercooler core between its two tanks: a finned block facing forward
+  for (const c of bo.coolers) {
+    const core = new THREE.Mesh(new THREE.BoxGeometry(c.T, c.H, c.W), coreMat);
+    core.position.copy(c.c);
+    g.add(core);
+    const nf = Math.max(6, Math.round(c.H / 0.014));
+    for (let i = 0; i < nf; i++) {
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.0025, c.W * 0.98), alu);
+      fin.position.set(c.c.x - c.T / 2 - 0.0015, c.c.y - c.H / 2 + c.H * (i + 0.5) / nf, c.c.z);
+      g.add(fin);
+    }
+  }
+  // Roots blower
+  const bl = bo.blower;
+  let rotorA = null, rotorB = null, pulley = null;
+  if (bl) {
+    const hw = bl.a / 2 + bl.Rt + bl.wall, hh = bl.Rt + bl.wall, len = bl.x1 - bl.x0;
+    const shape = new THREE.Shape();
+    shape.absarc(hw - hh, 0, hh, -Math.PI / 2, Math.PI / 2, false);
+    shape.absarc(-(hw - hh), 0, hh, Math.PI / 2, 3 * Math.PI / 2, false);
+    // extruded along +Z, turned so the extrusion runs along +X (shape x -> world -z)
+    const caseG = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false, curveSegments: 24 });
+    caseG.rotateY(Math.PI / 2);
+    const shell = new THREE.Mesh(caseG, glass);
+    shell.position.set(bl.x0, bl.cy, 0);
+    shell.renderOrder = 2;
+    g.add(shell);
+    const outline = shape.getPoints(24).map((p) => new V3(0, p.y, -p.x));
+    for (const x of [bl.x0, bl.x1]) {
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(outline.map((p) => p.clone().add(new V3(x, bl.cy, 0))), true, 'centripetal'), 96, 0.003, 6, true), alu));
+    }
+    // front plate (the gear case behind the snout)
+    const plateG = new THREE.ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: false, curveSegments: 24 });
+    plateG.rotateY(Math.PI / 2);
+    const front = new THREE.Mesh(plateG, plateMat);
+    front.position.set(bl.x0 - 0.012, bl.cy, 0);
+    g.add(front);
+    // outlet: an open throat from the bottom of the case down into the plenum
+    const th = bl.cy - hh - bl.outletTop + 0.012;
+    const throat = new THREE.Mesh(new THREE.BoxGeometry(0.8 * bl.Lr, th, 0.9 * bl.a), glass);
+    throat.position.set(bl.cx, bl.outletTop - 0.006 + th / 2, 0);
+    throat.renderOrder = 2;
+    g.add(throat);
+    // rotors: two lobed, twisted rotors, mirror images of each other, meshing
+    rotorA = new THREE.Mesh(rotorGeometry(bl.Rm, bl.A, bl.lobes, bl.Lr, bl.helix), alu);
+    rotorB = new THREE.Mesh(rotorGeometry(bl.Rm, bl.A, bl.lobes, bl.Lr, -bl.helix), alu);
+    rotorA.position.set(bl.cx, bl.cy, -bl.a / 2);
+    rotorB.position.set(bl.cx, bl.cy, bl.a / 2);
+    g.add(rotorA, rotorB);
+    for (const z of [-bl.a / 2, bl.a / 2]) { const sh = xCyl(0.011, bl.x0 - 0.004, bl.x1 + 0.004, steel, 16); sh.position.y = bl.cy; sh.position.z = z; g.add(sh); }
+    // drive: a snout from the front of the case on the drive rotor's shaft, its pulley belted to a
+    // pulley on the crank; the pulleys' diameters are in the drive ratio
+    const xb = crank.x0 - 0.03, rCr = 0.0915, rBl = rCr / bl.ratio, zB = -bl.a / 2;
+    const snout = xCyl(0.024, xb + 0.012, bl.x0 - 0.012, darkSteel, 24);
+    snout.position.y = bl.cy; snout.position.z = zB;
+    g.add(snout);
+    pulley = new THREE.Group();
+    pulley.add(xCyl(rBl, -0.012, 0.012, darkSteel, 40));
+    for (const dx of [-0.011, 0.011]) pulley.add(xCyl(rBl * 1.06, dx - 0.0015, dx + 0.0015, alu, 40));
+    const mark = xCyl(0.006, -0.0135, 0.0135, steel, 12);
+    mark.position.y = 0.6 * rBl;
+    pulley.add(mark);
+    pulley.position.set(xb, bl.cy, zB);
+    g.add(pulley);
+    g.add(xCyl(rCr, xb - 0.012, xb + 0.012, darkSteel, 56));
+    for (const dx of [-0.011, 0.011]) g.add(xCyl(rCr * 1.03, xb + dx - 0.0015, xb + dx + 0.0015, alu, 56));
+    g.add(xCyl(0.02, xb + 0.012, crank.x0 + 0.01, steel, 16));
+    // belt: round both pulleys and along their outer tangents
+    const c1 = [0, 0], c2 = [bl.cy, zB], D = Math.hypot(c2[0] - c1[0], c2[1] - c1[1]);
+    const base = Math.atan2(c2[1] - c1[1], c2[0] - c1[0]), off = Math.acos((rCr - rBl) / D);
+    const pts = [];
+    const arc = (c, r, a0, a1, k) => { for (let i = 0; i < k; i++) { const q = a0 + (a1 - a0) * i / k; pts.push(new V3(xb, c[0] + r * Math.cos(q), c[1] + r * Math.sin(q))); } };
+    arc(c2, rBl + 0.004, base - off, base + off, 24);
+    arc(c1, rCr + 0.004, base + off, base + 2 * Math.PI - off, 48);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, 'centripetal'), 160, 0.004, 6, true), rubber));
+    // bypass valve actuator on the inlet volume
+    const bi = H.volumes.findIndex((v) => v.name === 'blower_in');
+    if (bi >= 0 && L.volPos[bi]) cylAt(0.016, 0.03, Y, L.volPos[bi].clone().add(new V3(0, L.volShape[bi].size[1] / 2 + 0.015, 0)), alu, 24);
+    engPts.push(new V3(bl.x0, bl.cy + hh, hw), new V3(bl.x1, bl.cy + hh, -hw), new V3(xb, bl.cy + rBl, zB), new V3(xb, -rCr, 0));
+  }
+  const st = { theta: null, ca: 0, t: 0 };
+  return {
+    group: g, engPts,
+    /** Turn the blower's rotors: crank angle (unwrapped from the cycle angle with the engine speed)
+     *  times the drive ratio, as the simulator has them. */
+    update(bin, o, co) {
+      if (!bl) return;
+      const t = bin[o], rpm = bin[o + 2], ca = bin[co + 5];
+      const dt = t - st.t;
+      if (st.theta === null || !(dt > 0 && dt < 0.5)) st.theta = ca;
+      else {
+        const dca = ca - st.ca, want = rpm / 60 * 2 * Math.PI * dt;
+        st.theta += dca + 4 * Math.PI * Math.round((want - dca) / (4 * Math.PI));
+      }
+      st.t = t; st.ca = ca;
+      const psi = bl.ratio * st.theta;
+      rotorA.rotation.x = Math.PI / 2 - psi;
+      rotorB.rotation.x = -Math.PI / 6 + psi;
+      pulley.rotation.x = -psi;
+    },
+  };
+}
+
 // ---------------------------------------------------------------- sound sources
 /** Where each radiating opening of `H.sound.sources` is in the drawing, in model coordinates
  *  (the model's root is never moved): `pos` the centre of the opening, `dir` the outward unit
@@ -1024,6 +1492,11 @@ export class EngineModel {
     });
     const rods = wankel ? [] : L.cyl.map(() => { const o = buildRod(L); engine.add(o.group); return o; });
 
+    // On a boosted engine the charge side (compressor or blower outlet to the intake valves) is
+    // coloured on its own, dimmer scale (chargeColor), and the turbine housings glow with heat.
+    const boosted = !!(H.turbo || H.boost);
+    const chargeVol = (name) => boosted && /^(comp_out|ic_in|intercooler|throttle_in|blower_out|plenum)/.test(name);
+    const hotVol = (name) => !!H.turbo && /^(collector|turbine_in|turbine_out)/.test(name);
     // pipes: glass tubes of glowing gas; the intake snorkel is ghosted so it recedes
     const pipeMat = dataMaterial(true), ghostPipeMat = dataMaterial(true, true);
     const tubes = H.pipes.map((p, k) => {
@@ -1033,14 +1506,16 @@ export class EngineModel {
       m.frustumCulled = false;
       if (p.kind === 'snorkel') m.renderOrder = 3;
       root.add(m);
-      return { ...t, mesh: m, pipe: p, shown: L.paths[k].getLength() };
+      return { ...t, mesh: m, pipe: p, shown: L.paths[k].getLength(), charge: boosted && (p.kind === 'charge' || p.kind === 'runner') };
     });
     // volumes: airbox and plenum as ghosts, collectors as merge cones, the rest as small glass bodies
     const vols = H.volumes.map((v, k) => {
       const s = L.volShape[k], p = L.volPos[k];
       if (!s || !p) return null;
-      let g, ghost = false;
-      if (s.type === 'sphere') g = new THREE.SphereGeometry(s.r, 28, 18);
+      let g, ghost = false, extra = [];
+      const bg = boostVolumeGeometries(s, p);
+      if (bg) { [g, ...extra] = bg.geos; ghost = bg.ghost; }
+      else if (s.type === 'sphere') g = new THREE.SphereGeometry(s.r, 28, 18);
       else if (s.type === 'box') { g = new THREE.BoxGeometry(s.side, s.side, s.side, 1, 1, 1); ghost = true; }
       else if (s.type === 'fan') {
         // merge collector: a flat fan of inlets (one per primary) lofted down to the round outlet
@@ -1072,8 +1547,11 @@ export class EngineModel {
       const m = new THREE.Mesh(g, mat);
       m.position.copy(p);
       if (ghost) m.renderOrder = 3;
+      // further pieces of the same volume (an air filter's duct; a turbine housing on its collector)
+      for (const eg of extra) { const c = new THREE.Mesh(eg, mat); if (ghost) c.renderOrder = 3; m.add(c); }
+      if (s.volute) for (const eg of voluteGeometries(s.volute)) { const c = new THREE.Mesh(eg, mat); c.position.copy(s.volute.C); m.add(c); }
       root.add(m);
-      return { mesh: m, mat, offset: v.offset };
+      return { mesh: m, mat, offset: v.offset, charge: chargeVol(v.name), hot: hotVol(v.name) };
     });
     // throttle body between airbox and plenum
     let plate = null;
@@ -1090,6 +1568,9 @@ export class EngineModel {
       root.add(plate);
     }
 
+    // turbo centre sections and wheels, intercooler cores, the blower's case, rotors and drive
+    const boostParts = boosted ? buildBoostParts(L, H, crank, root) : null;
+
     // framing
     const boxAll = new THREE.Box3(), boxEng = new THREE.Box3();
     if (wankel) {
@@ -1102,6 +1583,7 @@ export class EngineModel {
       }
       boxEng.expandByPoint(new V3(crank.x0, -1.1 * B, -1.1 * B)).expandByPoint(new V3(crank.x1, 1.1 * B, 1.1 * B));
     }
+    if (boostParts) for (const q of boostParts.engPts) boxEng.expandByPoint(q);
     boxAll.copy(boxEng);
     const ptsEng = [], ptsAll = [];
     for (const x of [boxEng.min.x, boxEng.max.x]) for (const y of [boxEng.min.y, boxEng.max.y]) for (const z of [boxEng.min.z, boxEng.max.z]) ptsEng.push(new V3(x, y, z));
@@ -1122,6 +1604,8 @@ export class EngineModel {
     ptsAll.push(...ptsEng);
     const ptsCore = ptsEng.slice(0, 8);
     Object.assign(this, { rotary, root, L, sp, crank, cyls, rods, tubes, vols, plate, boxEng, boxAll, ptsCore, ptsEng, ptsAll, pipeMat, ghostPipeMat });
+    this.boostParts = boostParts;
+    this.chargeLook = boosted ? chargeLookFor(H) : null;
     this.state = { clear: Infinity, valveClear: Infinity };
     // open exhaust ends: where the gas leaves, and which way
     this.outlets = [];
@@ -1237,7 +1721,8 @@ export class EngineModel {
       for (let j = 0; j < tb.rings; j++) {
         const f = tb.frac[j], i0 = Math.floor(f), i1 = Math.min(S - 1, i0 + 1);
         const p0 = bin[po + 3 * i0] - (refP ? refP(o, off + 3 * i0) : pa), p1 = bin[po + 3 * i1] - (refP ? refP(o, off + 3 * i1) : pa);
-        pressureColor((p0 + (p1 - p0) * (f - i0)) * 1e-5, tmpCol, 0);
+        if (tb.charge) chargeColor((p0 + (p1 - p0) * (f - i0)) * 1e-5, tmpCol, 0, this.chargeLook);
+        else pressureColor((p0 + (p1 - p0) * (f - i0)) * 1e-5, tmpCol, 0);
         let q = j * per * 3;
         for (let k = 0; k < per; k++) { arr[q++] = tmpCol[0] * gs; arr[q++] = tmpCol[1] * gs; arr[q++] = tmpCol[2] * gs; }
         if (hot) {
@@ -1251,10 +1736,18 @@ export class EngineModel {
     }
     for (const v of vols) {
       if (!v) continue;
-      pressureColor((bin[o + v.offset] - (refP ? refP(o, v.offset) : pa)) * 1e-5, tmpCol, 0);
+      if (v.charge) chargeColor((bin[o + v.offset] - (refP ? refP(o, v.offset) : pa)) * 1e-5, tmpCol, 0, this.chargeLook);
+      else pressureColor((bin[o + v.offset] - (refP ? refP(o, v.offset) : pa)) * 1e-5, tmpCol, 0);
       v.mat.uniforms.uCol.value.set(tmpCol[0] * gs, tmpCol[1] * gs, tmpCol[2] * gs);
+      // a turbine housing glows with the heat of its gas, as the exhaust pipes do
+      if (v.hot && heat) v.mat.uniforms.uHeat.value = gs * Math.min(1, Math.max(0, (bin[o + v.offset + 1] - 800) / 550));
     }
-    if (plate) plate.rotation.z = Math.acos(Math.max(0, 1 - Math.min(1, thr)));
+    // The bore runs along x. rotation.z = 0 leaves the disc lying along the bore (wide open) and pi/2
+    // turns it across the bore (shut); the plate's angle from shut is acos(1 - thr), so that the
+    // opening it uncovers (1 - cos) follows the throttle. (Until 2026-11-17 this was inverted: the
+    // plate drew shut at full throttle and open at idle.)
+    if (plate) plate.rotation.z = Math.PI / 2 - Math.acos(Math.max(0, 1 - Math.min(1, thr)));
+    if (this.boostParts) this.boostParts.update(bin, o, co);
   }
 
   /** Shaft angle of rotor j for the frame at cylinder-block offset `co`: chamber 0's angle since

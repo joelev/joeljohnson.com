@@ -19,10 +19,10 @@
 // click or tap on the space-bar key cap), which iOS needs; the engine is then created on the audio
 // thread. That key cap stays where it is and is the throttle from then on.
 
-import { LiveScene } from './scene.js?v=18e7928db1';
-import { pressureColor, config } from './engine-model.js?v=18e7928db1';
-import { FirstRun } from './firstrun.js?v=18e7928db1';
-import { SpectroSource, LiveSpectro } from './spectro.js?v=18e7928db1';
+import { LiveScene } from './scene.js?v=46fea24ae5';
+import { pressureColor, chargeColor, config } from './engine-model.js?v=46fea24ae5';
+import { FirstRun } from './firstrun.js?v=46fea24ae5';
+import { SpectroSource, LiveSpectro } from './spectro.js?v=46fea24ae5';
 
 const Q = new URLSearchParams(location.search);
 const PAGE_ENGINE = (document.querySelector('meta[name="engine"]') || {}).content || null;
@@ -158,7 +158,7 @@ async function boot() {
   S.mock = Q.get('mock') === '1';
   let mod;
   // ?capture=1: the simulator stepped on the main thread for offline video (live/capture-engine.js; not shipped in the public build)
-  try { mod = await import(Q.get('capture') === '1' ? './capture-engine.js' : S.mock ? './mock-engine.js?v=18e7928db1' : './engine.js?v=18e7928db1'); } catch (e) { loadFailed('The engine simulator could not be loaded', e); return; }
+  try { mod = await import(Q.get('capture') === '1' ? './capture-engine.js' : S.mock ? './mock-engine.js?v=46fea24ae5' : './engine.js?v=46fea24ae5'); } catch (e) { loadFailed('The engine simulator could not be loaded', e); return; }
   const LiveEngine = S.LiveEngine = mod.LiveEngine;
   setLoad(0.3);
   if (+Q.get('slow') > 1) LiveEngine.slow = Math.round(+Q.get('slow'));
@@ -241,6 +241,7 @@ function showHeader(h) {
     console.warn('picture: cannot draw this engine:', e);
     banner(`The ${sp.label} cannot be drawn yet, so the picture is empty; the sound and the dials are not affected.`, 9000);
   }
+  showChargeLegend();
   $('elabel').textContent = sp.label;
   const rotary = h.kind === 'wankel';
   if (rotary) {
@@ -1281,8 +1282,20 @@ function drawAudio() {
   S.liveSpec.draw(Math.min(0.1, (now - (S.specT || now)) / 1000), h ? S.rpm / 60 * h.spec.firing.length * 360 / (h.cycle_deg || 720) : 0);
   S.specT = now;
 }
+const legendCss = (c) => `rgb(${c.map((v) => Math.round(255 * Math.pow(Math.min(1, v / (1 + 0.25 * v)), 1 / 2.2))).join(',')})`;
+/** Boosted engines: the charge air (compressor or blower outlet to the intake valves) has its own
+ *  colour scale in the picture (viz/engine-model.js chargeColor); its row of the legend shows it. */
+function showChargeLegend() {
+  const m = S.scene && S.scene.model, look = m && m.chargeLook;
+  $('lgcharge').hidden = !look;
+  if (!look) return;
+  const stops = [];
+  for (let k = 0; k <= 10; k++) { const c = [0, 0, 0]; chargeColor(k / 10 * look.pFull, c, 0, look); stops.push(`${legendCss(c)} ${k * 10}%`); }
+  $('legendbar2').style.background = `linear-gradient(90deg, ${stops.join(',')})`;
+  $('pfc').textContent = +look.pFull.toFixed(2);
+}
 function initLegend() {
-  const css = (c) => `rgb(${c.map((v) => Math.round(255 * Math.pow(Math.min(1, v / (1 + 0.25 * v)), 1 / 2.2))).join(',')})`;
+  const css = legendCss;
   const stops = [];
   for (let k = 0; k <= 20; k++) { const c = [0, 0, 0]; pressureColor((k / 10 - 1) * config.pFull, c, 0); stops.push(`${css(c)} ${k * 5}%`); }
   $('legendbar').style.background = `linear-gradient(90deg, ${stops.join(',')})`;

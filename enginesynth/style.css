@@ -82,6 +82,9 @@ input:disabled { opacity: .35; }
 #legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-family: var(--mono); font-size: 11px; color: var(--dim); }
 #legend i { font-style: normal; }
 #legendbar { width: 150px; height: 6px; border-radius: 3px; }
+#lgcharge { display: flex; align-items: center; gap: 8px; flex-basis: 100%; }
+#lgcharge[hidden] { display: none; }
+#legendbar2 { width: 105px; height: 6px; border-radius: 3px; }
 #legend .cap { flex-basis: 100%; letter-spacing: .04em; text-transform: none; font-family: var(--sans); font-size: 10.5px; }
 #banner { z-index: 13; position: fixed; left: 50%; top: 58px; transform: translateX(-50%); font-size: 12px; color: var(--amber); background: var(--glass); border: 1px solid rgba(255,176,74,.35); border-radius: 999px; padding: 6px 14px; }
 /* too-heavy notice */

@@ -23,8 +23,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { EngineModel, config } from './engine-model.js?v=26afb9b571';
-import { SoundFloor } from './wave-studies.js?v=26afb9b571';
+import { EngineModel, config } from './engine-model.js?v=18e7928db1';
+import { SoundFloor } from './wave-studies.js?v=18e7928db1';
 
 /** Warm-up: an overall factor on the engine's and pipes' glow, so an idling engine looks restrained
  *  and a hard-run one blazes. Not a simulation of heat: a smoothed state that rises with engine

@@ -128,8 +128,8 @@ body.run .k-label { opacity: 0; }
 @keyframes k-nudge { 50% { border-color: var(--k-on); transform: translateY(-2px); } }
 
 /* ---- before the engine starts: the space bar over a dark engine, nothing else lit */
-#cluster, #center, #topright, .engbtn, #engstep, #espec, #btnWorkshop { transition: opacity .6s var(--k-ease); }
-body.pre #cluster, body.pre #center, body.pre #topright, body.pre .engbtn, body.pre #engstep, body.pre #espec, body.pre #btnWorkshop { opacity: 0; pointer-events: none; }
+#cluster, #center, #topright, .engbtn, #engstep, #espec, #evehicle, #btnWorkshop { transition: opacity .6s var(--k-ease); }
+body.pre #cluster, body.pre #center, body.pre #topright, body.pre .engbtn, body.pre #engstep, body.pre #espec, body.pre #evehicle, body.pre #btnWorkshop { opacity: 0; pointer-events: none; }
 #titlerow { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; transition: opacity .9s .25s; }
 body.pre #titlerow { opacity: 0; transition: none; pointer-events: none; }
 /* ---- the maker's credit: on the loading screen under the note, beside the name while running, and in About */
@@ -250,7 +250,7 @@ body.pre :is(.k-nums, .k-letters) { pointer-events: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .key, .k-nums, .k-letters, .k-gear, .k-lever, .lv-knob, .k-lit, .k-label, .lv-slot, #pitch, #cluster, #center, #topright, .engbtn, #espec, #btnWorkshop, #title, .engbtn-go, #readouts { transition-duration: .01s !important; }
+  .key, .k-nums, .k-letters, .k-gear, .k-lever, .lv-knob, .k-lit, .k-label, .lv-slot, #pitch, #cluster, #center, #topright, .engbtn, #espec, #evehicle, #btnWorkshop, #title, .engbtn-go, #readouts { transition-duration: .01s !important; }
   .k-gear.tick, #tach.kick, .k-auto.nudge, #btnBrake.teach, .browser { animation: none; }
   /* a cue still shows, as a steady accent instead of a loop */
   .k-space.teach { animation: none; box-shadow: 0 var(--k-travel) 0 var(--k-space-side), 0 0 22px 2px var(--k-accent-halo); }

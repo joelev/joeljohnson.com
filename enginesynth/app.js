@@ -19,10 +19,10 @@
 // click or tap on the space-bar key cap), which iOS needs; the engine is then created on the audio
 // thread. That key cap stays where it is and is the throttle from then on.
 
-import { LiveScene } from './scene.js?v=46fea24ae5';
-import { pressureColor, chargeColor, config } from './engine-model.js?v=46fea24ae5';
-import { FirstRun } from './firstrun.js?v=46fea24ae5';
-import { SpectroSource, LiveSpectro } from './spectro.js?v=46fea24ae5';
+import { LiveScene } from './scene.js?v=fe9cc229ea';
+import { pressureColor, chargeColor, config } from './engine-model.js?v=fe9cc229ea';
+import { FirstRun } from './firstrun.js?v=fe9cc229ea';
+import { SpectroSource, LiveSpectro } from './spectro.js?v=fe9cc229ea';
 
 const Q = new URLSearchParams(location.search);
 const PAGE_ENGINE = (document.querySelector('meta[name="engine"]') || {}).content || null;
@@ -158,7 +158,7 @@ async function boot() {
   S.mock = Q.get('mock') === '1';
   let mod;
   // ?capture=1: the simulator stepped on the main thread for offline video (live/capture-engine.js; not shipped in the public build)
-  try { mod = await import(Q.get('capture') === '1' ? './capture-engine.js' : S.mock ? './mock-engine.js?v=46fea24ae5' : './engine.js?v=46fea24ae5'); } catch (e) { loadFailed('The engine simulator could not be loaded', e); return; }
+  try { mod = await import(Q.get('capture') === '1' ? './capture-engine.js' : S.mock ? './mock-engine.js?v=fe9cc229ea' : './engine.js?v=fe9cc229ea'); } catch (e) { loadFailed('The engine simulator could not be loaded', e); return; }
   const LiveEngine = S.LiveEngine = mod.LiveEngine;
   setLoad(0.3);
   if (+Q.get('slow') > 1) LiveEngine.slow = Math.round(+Q.get('slow'));
@@ -252,6 +252,11 @@ function showHeader(h) {
     const litres = Math.PI / 4 * sp.bore * sp.bore * sp.stroke * n * 1000;
     $('espec').textContent = `${litres.toFixed(litres < 2 ? 2 : 1)} L · ${n} cyl · ${(sp.bore * 1000).toFixed(1)} × ${(sp.stroke * 1000).toFixed(1)} mm · redline ${Math.round(sp.redline)}`;
   }
+  // the vehicle the engine pushes in Drive, when its definition has one (README "Vehicles in Drive")
+  const veh = h.vehicle, ev = $('evehicle');
+  ev.hidden = !veh;
+  ev.textContent = veh ? vehicleLine(veh) : '';
+  ev.title = veh ? `In Drive this engine pushes its own ${veh.kind}: ${Math.round(veh.mass_kg)} kg is its curb weight plus ${veh.kind === 'motorcycle' ? 'a rider' : 'a driver'}` : '';
   for (const b of document.querySelectorAll('#views button')) b.classList.toggle('on', b.dataset.view === S.scene.viewName);
   const lamps = $('lamps');
   lamps.replaceChildren();
@@ -642,6 +647,10 @@ function setActive(name, scroll = true) {
   }
   renderDetail(S.presets.find((p) => p.name === name));
 }
+/** "In Drive: Citroën 2CV A (1949) · 575 kg · 4-speed" from the header's or library's vehicle block. */
+function vehicleLine(v) {
+  return `In Drive: ${v.name} · ${Math.round(v.mass_kg)} kg · ${v.gear_count}-speed`;
+}
 function renderDetail(p) {
   const box = $('brDetail');
   box.replaceChildren();
@@ -681,6 +690,20 @@ function renderDetail(p) {
     if (pub.power_kw) d2.append(el('dt', '', 'Power'), el('dd', '', `${Math.round(pub.power_kw)} kW (${Math.round(pub.power_kw * 1.341)} hp)${pub.power_rpm ? ` at ${Math.round(pub.power_rpm)}` : ''}`));
     if (pub.torque_nm) d2.append(el('dt', '', 'Torque'), el('dd', '', `${Math.round(pub.torque_nm)} N·m${pub.torque_rpm ? ` at ${Math.round(pub.torque_rpm)}` : ''}`));
     box.appendChild(d2);
+  }
+  if (p.vehicle && sp.vehicle) {
+    const v = p.vehicle, vs = sp.vehicle, rider = v.kind === 'motorcycle' ? 'rider' : 'driver';
+    box.appendChild(el('h4', '', 'In Drive'));
+    const d3 = el('dl');
+    const r3 = (k, val) => { if (val) d3.append(el('dt', '', k), el('dd', '', val)); };
+    r3(v.kind === 'motorcycle' ? 'Motorcycle' : v.kind === 'race car' ? 'Race car' : 'Car', v.name);
+    r3('Weight', `${Math.round(v.mass_kg)} kg with ${rider} (${Math.round(vs.curb_kg)} kg curb)`);
+    r3('Gearbox', `${v.gear_count}-speed${Array.isArray(vs.gears) && vs.gears.length ? `: ${vs.gears.map((g) => (+g).toFixed(2)).join(', ')}` : ''}`);
+    if (vs.final_drive) r3(v.kind === 'motorcycle' ? 'Primary × final' : 'Final drive', (+vs.final_drive).toFixed(2));
+    if (vs.tyre) r3('Tyre', vs.tyre);
+    if (vs.top_speed_kmh) r3('Top speed', `${Math.round(vs.top_speed_kmh)} km/h`);
+    box.appendChild(d3);
+    if (vs.notes) box.appendChild(el('p', 'vnotes', vs.notes));
   }
   if (sp.notes) { box.appendChild(el('h4', '', real ? 'What is estimated' : 'About this engine')); box.appendChild(el('p', '', sp.notes)); }
   if (Array.isArray(sp.sources) && sp.sources.length) {

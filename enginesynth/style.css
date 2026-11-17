@@ -17,6 +17,8 @@ kbd { font-family: var(--mono); font-size: .85em; padding: 1px 6px; border: 1px 
 #title { font-size: 12px; letter-spacing: .32em; text-transform: uppercase; color: var(--amber); }
 #elabel { font-size: 26px; font-weight: 600; letter-spacing: .01em; margin-top: 6px; text-shadow: 0 2px 18px rgba(0,0,0,.8); }
 #espec { font-family: var(--mono); font-size: 12.5px; color: var(--dim); margin-top: 4px; }
+#evehicle { font-family: var(--mono); font-size: 12px; color: var(--dim); margin-top: 3px; max-width: 66ch; }
+#evehicle[hidden] { display: none; }
 #topright { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .chips { display: flex; background: var(--glass); border: 1px solid var(--line); border-radius: 999px; padding: 3px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .chips button { border: 0; background: none; padding: 6px 13px; border-radius: 999px; font-size: 12.5px; color: var(--dim); cursor: pointer; }
@@ -128,6 +130,7 @@ input:disabled { opacity: .35; }
 .tag.slow { border: 1px solid rgba(255,138,106,.55); color: #ff9c80; }
 .br-detail .loadline { margin-top: 12px; font-size: 12px; color: var(--dim); }
 .br-detail .loadline.warn { color: #ff9c80; }
+.br-detail .vnotes { margin-top: 8px; }
 #fuel h2.sub { margin: 18px 2px 4px; padding-top: 14px; border-top: 1px solid var(--line); }
 #fuel .hint { margin: 4px 0 0; }
 .segs + .hint { margin-top: 6px; }
@@ -177,7 +180,7 @@ input:disabled { opacity: .35; }
 
 /* narrow screens */
 @media (max-width: 900px) {
-  #espec, #load, #readouts, #scope, #legend .cap { display: none; }
+  #espec, #evehicle, #load, #readouts, #scope, #legend .cap { display: none; }
   #topright { flex-wrap: nowrap; gap: 6px; }
   #topright .pill.btn { padding: 6px 10px; font-size: 11.5px; flex: none; }
   #topright .pill.ico { width: 31px; height: 31px; padding: 0; justify-content: center; }

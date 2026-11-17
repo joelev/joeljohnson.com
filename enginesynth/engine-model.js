@@ -319,8 +319,9 @@ function routePipes(H, cyl, B, opt = {}) {
     startPts[k] = start;
     endPts[k] = end;
   });
-  // merge volume sits behind the collectors, on the centre line between them
-  const mergeIdx = volByName.merge;
+  // merge volume sits behind the collectors, on the centre line between them (a turbo's merged
+  // turbine inlet is drawn the same way)
+  const mergeIdx = volByName.merge ?? volByName.turbine_in;
   const secs = pipesOf('secondary');
   const outPts = Object.values(volOut);
   if (mergeIdx !== undefined && outPts.length) {
@@ -348,6 +349,56 @@ function routePipes(H, cyl, B, opt = {}) {
     volOut[mergeIdx] = volPos[mergeIdx];
     volShape[mergeIdx] = { type: 'sphere', r: Math.max(0.7 * sp.secondary_d, 0.6 * sp.mid_d) };
     secs.forEach(({ p, k }) => { paths[k] = fitCurve((beta) => one(p, lo, beta), p.len); });
+  }
+  // ---- turbocharger (engines with `boost.kind == "turbo"`): the turbine housing just past its
+  // inlet (the collector, or the merged turbine inlet), the compressor beside it, and the charge
+  // pipes run as plain bends to an intercooler ahead of the engine and on to the throttle. The
+  // places are drawn, not measured; the gas in them is simulated.
+  const yIdx = volByName.turbine_out;
+  if (yIdx !== undefined) {
+    const xIn = volByName.turbine_in ?? volByName.collector1;
+    const s0 = volOut[xIn] || volPos[xIn] || new V3(xMax + 0.2, -0.1, 0.2);
+    const ax = collAxis[xIn] || ex.clone();
+    const tPos = s0.clone().addScaledVector(ax, 0.06);
+    volPos[yIdx] = tPos;
+    volOut[yIdx] = tPos.clone().addScaledVector(ax, 0.05);
+    collAxis[yIdx] = ax;
+    volShape[yIdx] = { type: 'sphere', r: 0.05 };
+    const ci = volByName.comp_out;
+    if (ci !== undefined) {
+      volPos[ci] = tPos.clone().add(new V3(-0.02, 0.07, 0));
+      volShape[ci] = { type: 'sphere', r: 0.045 };
+    }
+    const ti = volByName.throttle_in;
+    const ab = volByName.airbox;
+    const neck = ab !== undefined && volShape[ab] ? volShape[ab].neck : null;
+    if (ti !== undefined && plenumIdx !== undefined) {
+      const pc = volPos[plenumIdx];
+      volPos[ti] = neck ? new V3(neck.x1, pc.y, pc.z) : pc.clone().add(new V3(-0.15, 0, 0));
+      volShape[ti] = { type: 'sphere', r: 0.025 };
+    }
+    const ii = volByName.ic_in, io = volByName.intercooler;
+    if (io !== undefined && plenumIdx !== undefined) {
+      const front = new V3(xMin - 0.35, volPos[plenumIdx].y - 0.3, 0);
+      volPos[io] = front;
+      volShape[io] = { type: 'capsule', r: 0.05, len: 0.25 };
+      if (ii !== undefined) {
+        volPos[ii] = front.clone().add(new V3(0, -0.12, 0));
+        volShape[ii] = { type: 'sphere', r: 0.035 };
+      }
+    }
+    const bend = (a, b, lift) => crv([a, a.clone().lerp(b, 0.33).add(new V3(0, lift, 0)), a.clone().lerp(b, 0.66).add(new V3(0, lift, 0)), b]);
+    pipesOf('charge').forEach(({ p, k }) => {
+      const a = volPos[p.left.index], b = volPos[p.right.index];
+      if (a && b) paths[k] = bend(a, b, -0.08);
+    });
+    const bi = volByName.bov;
+    pipesOf('bov').forEach(({ p, k }) => {
+      const a = volPos[ti] ? volPos[ti].clone().add(new V3(0, 0.03, 0)) : null;
+      if (!a) return;
+      if (bi !== undefined) { volPos[bi] = a; volShape[bi] = { type: 'sphere', r: 0.012 }; }
+      paths[k] = new THREE.LineCurve3(a, a.clone().add(new V3(0, p.len, 0)));
+    });
   }
   const outs = pipesOf('outlet');
   outs.forEach(({ p, k }, j) => {

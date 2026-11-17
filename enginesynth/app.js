@@ -19,10 +19,10 @@
 // click or tap on the space-bar key cap), which iOS needs; the engine is then created on the audio
 // thread. That key cap stays where it is and is the throttle from then on.
 
-import { LiveScene } from './scene.js?v=c93b9c7d77';
-import { pressureColor, config } from './engine-model.js?v=c93b9c7d77';
-import { FirstRun } from './firstrun.js?v=c93b9c7d77';
-import { SpectroSource, LiveSpectro } from './spectro.js?v=c93b9c7d77';
+import { LiveScene } from './scene.js?v=26afb9b571';
+import { pressureColor, config } from './engine-model.js?v=26afb9b571';
+import { FirstRun } from './firstrun.js?v=26afb9b571';
+import { SpectroSource, LiveSpectro } from './spectro.js?v=26afb9b571';
 
 const Q = new URLSearchParams(location.search);
 const PAGE_ENGINE = (document.querySelector('meta[name="engine"]') || {}).content || null;
@@ -158,7 +158,7 @@ async function boot() {
   S.mock = Q.get('mock') === '1';
   let mod;
   // ?capture=1: the simulator stepped on the main thread for offline video (live/capture-engine.js; not shipped in the public build)
-  try { mod = await import(Q.get('capture') === '1' ? './capture-engine.js' : S.mock ? './mock-engine.js?v=c93b9c7d77' : './engine.js?v=c93b9c7d77'); } catch (e) { loadFailed('The engine simulator could not be loaded', e); return; }
+  try { mod = await import(Q.get('capture') === '1' ? './capture-engine.js' : S.mock ? './mock-engine.js?v=26afb9b571' : './engine.js?v=26afb9b571'); } catch (e) { loadFailed('The engine simulator could not be loaded', e); return; }
   const LiveEngine = S.LiveEngine = mod.LiveEngine;
   setLoad(0.3);
   if (+Q.get('slow') > 1) LiveEngine.slow = Math.round(+Q.get('slow'));

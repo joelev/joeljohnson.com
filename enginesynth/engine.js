@@ -1,6 +1,6 @@
 // Page-side handle on the live engine simulator. See README in this folder for the contract.
-const WASM_URL = new URL('./engsim.wasm?v=c93b9c7d77', import.meta.url);
-const WORKLET_URL = new URL('./worklet.js?v=c93b9c7d77', import.meta.url);
+const WASM_URL = new URL('./engsim.wasm?v=26afb9b571', import.meta.url);
+const WORKLET_URL = new URL('./worklet.js?v=26afb9b571', import.meta.url);
 const QUALITY = ['live48+W+m+r', 'live96+W+m+r', 'live48', 'live96'];
 let modulePromise = null, mainInstance = null;
 
@@ -90,6 +90,7 @@ export class LiveEngine extends EventTarget {
     this._qualityPref = quality;
     this._throttle = 0; this._drive = false; this._auto = true;
     this._phi = 1; this._overrunFuel = 0; this._limiter = 'fuel'; this._liftoffPops = 0;
+    this._blowoff = null; this._whistle = null; // turbo engines only; null = the engine's own setting
     this._pending = new Map(); this._id = 0;
     this._ready = new Promise(res => { this._resolveReady = res; });
     node.port.onmessage = (ev) => this._message(ev.data);
@@ -121,7 +122,7 @@ export class LiveEngine extends EventTarget {
     const startRpm = (this.frame && this.engine === name) ? this.frame[2] : 0;
     const header = await new Promise((resolve, reject) => {
       this._pending.set(id, { resolve, reject });
-      this.output.port.postMessage({ type: 'new', id, req: request(name, overrides), quality: q, startRpm, drive: this._drive, auto: this._auto, throttle: this._throttle, phi: this._phi, overrunFuel: this._overrunFuel, limiter: this._limiter, liftoffPops: this._liftoffPops });
+      this.output.port.postMessage({ type: 'new', id, req: request(name, overrides), quality: q, startRpm, drive: this._drive, auto: this._auto, throttle: this._throttle, phi: this._phi, overrunFuel: this._overrunFuel, limiter: this._limiter, liftoffPops: this._liftoffPops, blowoff: this._blowoff, whistle: this._whistle });
     });
     this.engine = name; this.overrides = overrides;
     this.header = header; this.frame = null;
@@ -156,4 +157,9 @@ export class LiveEngine extends EventTarget {
   get overrunFuel() { return this._overrunFuel; }
   get limiter() { return this._limiter; }
   get liftoffPops() { return this._liftoffPops; }
+  // Turbo blow-off routing ('vent', 'recirc', 'none') and whistle stand-in gain, while running (no-ops on other engines).
+  setBlowoff(mode) { if (!['vent', 'recirc', 'none'].includes(mode)) return; this._blowoff = mode; this.output.port.postMessage({ type: 'blowoff', value: mode }); }
+  setWhistle(x) { const v = Number(x); if (!Number.isFinite(v)) return; this._whistle = Math.min(16, Math.max(0, v)); this.output.port.postMessage({ type: 'whistle', value: this._whistle }); }
+  get blowoff() { return this._blowoff; }
+  get whistle() { return this._whistle; }
 }

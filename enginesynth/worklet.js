@@ -44,6 +44,8 @@ class EngineProcessor extends AudioWorkletProcessor {
         if (m.overrunFuel !== undefined) x.es_set_overrun_fuel(l, m.overrunFuel);
         if (m.limiter !== undefined) x.es_set_limiter(l, m.limiter === 'spark' ? 1 : 0);
         if (m.liftoffPops !== undefined) x.es_set_liftoff_pops(l, m.liftoffPops);
+        if (m.blowoff != null && x.es_set_blowoff) x.es_set_blowoff(l, { none: 0, recirc: 1, vent: 2 }[m.blowoff]);
+        if (m.whistle != null && x.es_set_whistle) x.es_set_whistle(l, m.whistle);
         this.port.postMessage({ type: 'header', id: m.id, header: this.bytes(x.es_header_ptr(l), x.es_header_len(l)) });
         break;
       }
@@ -55,6 +57,8 @@ class EngineProcessor extends AudioWorkletProcessor {
       case 'phi': if (this.l) x.es_set_phi(this.l, m.value); break;
       case 'overrunFuel': if (this.l) x.es_set_overrun_fuel(this.l, m.value); break;
       case 'liftoffPops': if (this.l) x.es_set_liftoff_pops(this.l, m.value); break;
+      case 'blowoff': if (this.l && x.es_set_blowoff) x.es_set_blowoff(this.l, { none: 0, recirc: 1, vent: 2 }[m.value]); break;
+      case 'whistle': if (this.l && x.es_set_whistle) x.es_set_whistle(this.l, m.value); break;
       case 'limiter': if (this.l) x.es_set_limiter(this.l, m.value === 'spark' ? 1 : 0); break;
     }
   }

@@ -178,6 +178,12 @@ function routePipes(H, cyl, B, opt = {}) {
   // collector points straight down and out from its bank, with no rearward sweep: the turbine
   // housing hangs off its end with the shaft along the crank (see the turbocharger section below).
   const scrollColl = volByName.turbine_out !== undefined && volByName.turbine_in === undefined;
+  // A turbocharged flat engine driving the rear wheels is a rear- or mid-engined car (the 911 Turbo,
+  // 930) with its crank pulley toward the tail: the collectors sweep toward the pulley end, the turbo
+  // hangs low behind the engine there, and the intercooler lies flat above the engine, under the
+  // rear spoiler, where Porsche put it.
+  const rearTurbo = volByName.turbine_out !== undefined && sp.layout === 'flat' && !!sp.vehicle && sp.vehicle.driven === 'rear';
+  const xs = rearTurbo ? -1 : 1;   // which way along the crank the exhaust leaves
   sp.groups.forEach((grp, g) => {
     const vi = volByName[`collector${g + 1}`];
     if (vi === undefined || !grp.length) return;
@@ -193,7 +199,7 @@ function routePipes(H, cyl, B, opt = {}) {
     const axis = opt.radial
       ? am.clone().normalize().multiplyScalar(0.45).addScaledVector(bm, 0.25).addScaledVector(ex, 1).normalize()   // radial: stacks point back and a little outward
       : scrollColl ? bm.clone().addScaledVector(down, (bm.dot(down) > 0.3 ? 0.5 : 1.0) * (1 - Math.max(0, bm.dot(down)))).normalize()   // an inline's collector points well down, so its turbo hangs below the header
-        : bm.clone().addScaledVector(down, 0.8 * (1 - Math.max(0, bm.dot(down)))).normalize().addScaledVector(ex, 0.6).normalize();
+        : bm.clone().addScaledVector(down, 0.8 * (1 - Math.max(0, bm.dot(down)))).normalize().addScaledVector(ex, 0.6 * xs).normalize();
     const row = ex.clone().addScaledVector(axis, -ex.dot(axis)).normalize();
     const nhat = new V3().crossVectors(row, axis).normalize();
     if (nhat.dot(bm.clone().add(am.normalize())) < 0) nhat.negate();
@@ -339,13 +345,14 @@ function routePipes(H, cyl, B, opt = {}) {
     const m = new V3();
     outPts.forEach((c) => m.add(c));
     m.multiplyScalar(1 / outPts.length);
-    const cxMax = Math.max(...outPts.map((c) => c.x));
+    // behind the collectors: toward the flywheel end, or the pulley end on a rear-engined turbo
+    const cxMax = xs > 0 ? Math.max(...outPts.map((c) => c.x)) : Math.min(...outPts.map((c) => c.x));
     const secLen = secs.length ? Math.min(...secs.map((e) => e.p.len)) : 0.4;
     // a single smooth bend from the collector outlet to the merge; extra length hangs as sag
     const one = (p, dx, beta) => {
-      const s = volOut[p.left.index], e = new V3(cxMax + dx, m.y - 0.02, m.z);
+      const s = volOut[p.left.index], e = new V3(cxMax + xs * dx, m.y - 0.02, m.z);
       const d = s.distanceTo(e);
-      const a1 = s.clone().addScaledVector(collAxis[p.left.index], Math.min(0.07, 0.2 * d)), a2 = e.clone().addScaledVector(ex, -Math.min(0.08, 0.2 * d));
+      const a1 = s.clone().addScaledVector(collAxis[p.left.index], Math.min(0.07, 0.2 * d)), a2 = e.clone().addScaledVector(ex, -xs * Math.min(0.08, 0.2 * d));
       return crv([s, a1, a1.clone().lerp(a2, 0.5).addScaledVector(down, beta), a2, e]);
     };
     const longest = (dx) => Math.max(...secs.map(({ p }) => one(p, dx, 0).getLength()));
@@ -356,7 +363,7 @@ function routePipes(H, cyl, B, opt = {}) {
         if (longest(mid) < secLen) lo = mid; else hi = mid;
       }
     }
-    volPos[mergeIdx] = new V3(cxMax + lo, m.y - 0.02, m.z);
+    volPos[mergeIdx] = new V3(cxMax + xs * lo, m.y - 0.02, m.z);
     volOut[mergeIdx] = volPos[mergeIdx];
     volShape[mergeIdx] = { type: 'sphere', r: Math.max(0.7 * sp.secondary_d, 0.6 * sp.mid_d) };
     secs.forEach(({ p, k }) => { paths[k] = fitCurve((beta) => one(p, lo, beta), p.len); });
@@ -456,8 +463,9 @@ function routePipes(H, cyl, B, opt = {}) {
       const comp = { Rh: 1.25 * rw, r0: 0.25 * rw, r1: 0.7 * rw, rPort: chargeR, exitLen: 0.04, sweep: 5.6 };
       const Lc = 1.7 * rw;
       const Cc = tv.C.clone().addScaledVector(ax, turb.r1 + Lc + comp.r1);
-      // outlet: outboard and down, so its charge pipe drops and runs forward low along the bay
-      const u = new V3(0, -0.5, side).normalize();
+      // outlet: outboard and down, so its charge pipe drops and runs forward low along the bay; on a
+      // rear-engined turbo, up toward the intercooler above the engine
+      const u = rearTurbo ? new V3(0, 1, 0.35 * side).normalize() : new V3(0, -0.5, side).normalize();
       const hC = -tv.h;
       const nC = e1.clone().multiplyScalar(hC * u.dot(e2)).addScaledVector(e2, -hC * u.dot(e1)).normalize();
       const Xc = Cc.clone().addScaledVector(nC, comp.Rh + comp.r1).addScaledVector(u, comp.exitLen);
@@ -471,7 +479,8 @@ function routePipes(H, cyl, B, opt = {}) {
       }
       // turbine outlet: a can behind the turbine, along the shaft; the downpipe leaves its end
       const rCan = Math.max(0.028, 1.05 * rwT), lenCan = Math.min(0.14, Math.max(0.06, H.volumes[yIdx].vol / (Math.PI * rCan * rCan)));
-      const back = ax.clone().negate();
+      // (on a rear-engined turbo the shaft's far side faces the engine, so the can points down)
+      const back = rearTurbo ? new V3(0, -1, 0) : ax.clone().negate();
       const c0 = tv.C.clone().addScaledVector(back, turb.r1 * 0.8);
       volPos[yIdx] = c0.clone().addScaledVector(back, lenCan / 2);
       volOut[yIdx] = c0.clone().addScaledVector(back, lenCan);
@@ -494,7 +503,18 @@ function routePipes(H, cyl, B, opt = {}) {
       // One per turbo: low and wide at the front corners, beside the radiator, on a twin; one front
       // mount across the nose on a single turbo
       const ii = volByName[`ic_in${tg}`], io = volByName[`intercooler${tg}`];
-      if (io !== undefined && ii !== undefined) {
+      if (io !== undefined && ii !== undefined && rearTurbo && plenumIdx !== undefined && volShape[plenumIdx]) {
+        // rear-engined (930): flat across the top of the engine at its pulley end, under the spoiler;
+        // tanks either side, lying along the crank. Size and height are drawing choices.
+        const W = 0.36, D = 0.2, Tk = 0.05;
+        const pc = volPos[plenumIdx], ps = volShape[plenumIdx];
+        const cx = xMin + 0.5 * D - 0.02, cy = pc.y + ps.r + 0.16, cz = 0;
+        const rin = capsuleR(H.volumes[ii].vol, D), rout = capsuleR(H.volumes[io].vol, D);
+        const pin = new V3(cx, cy, cz + side * (W / 2 + 0.6 * rin)), pout = new V3(cx, cy, cz - side * (W / 2 + 0.6 * rout));
+        volPos[ii] = pin; volShape[ii] = { type: 'tank', r: rin, len: D, axis: new V3(1, 0, 0) };
+        volPos[io] = pout; volShape[io] = { type: 'tank', r: rout, len: D, axis: new V3(1, 0, 0) };
+        boost.coolers.push({ tag: tg, c: new V3(cx, cy, cz), W, H: D, T: Tk, flat: true });
+      } else if (io !== undefined && ii !== undefined) {
         const W = twin ? 0.17 : 0.34, Hc = twin ? 0.11 : 0.14, Tk = 0.045;
         // twin: 0.55 m ahead of the engine's front face and wide, as the definition's packaging
         // estimate has them (the charge pipes' lengths come from the same estimate)
@@ -516,9 +536,17 @@ function routePipes(H, cyl, B, opt = {}) {
     pipesOf('charge').forEach(({ p, k }) => {
       const L = p.left.index, R = p.right.index, ln = H.volumes[L].name, tg = ln.endsWith('_t2') ? '_t2' : '';
       const tb = boost.turbos.find((q) => q.tag === tg) || boost.turbos[0];
-      const back = new V3(1, 0, 0);
+      // (a rear-engined turbo's flat intercooler is entered and left through the bottoms of its tanks)
+      const back = rearTurbo ? new V3(0, -1, 0) : new V3(1, 0, 0);
       const tankPort = (i) => (volShape[i] && volShape[i].type === 'tank' ? volPos[i].clone().addScaledVector(back, volShape[i].r) : volPos[i].clone());
-      if (/^comp_out/.test(ln) && volPos[R]) {
+      if (rearTurbo && /^comp_out/.test(ln) && volPos[R]) {
+        // up from the compressor outlet into the inlet tank from below; spare length moves the
+        // middle corner aft, away from the engine
+        const X = tb.comp.X, end = tankPort(R);
+        const x1 = X.clone().addScaledVector(tb.comp.u, 0.04), q = end.clone().add(new V3(0, -0.07, 0));
+        const m = x1.clone().lerp(q, 0.5);
+        routePipe(k, p.len, (beta) => [X, x1, m.clone().add(new V3(-beta, 0, 0)), q, end]);
+      } else if (/^comp_out/.test(ln) && volPos[R]) {
         const X = tb.comp.X, end = tankPort(R), run = end.y;
         const x1 = X.clone().addScaledVector(tb.comp.u, 0.04), q = new V3(end.x + 0.09, run, end.z);
         const m = x1.clone().lerp(q, 0.5); m.y = run;
@@ -590,9 +618,11 @@ function routePipes(H, cyl, B, opt = {}) {
     const zoff = fromMerge && outs.length > 1 ? (j - (outs.length - 1) / 2) * 0.32 : 0;
     const ax = fromMerge ? null : collAxis[p.left.index];
     if (ax && tTags.length) {
-      // a turbo's downpipe: out of the turbine outlet, down under the sump, then straight back
+      // a turbo's downpipe: out of the turbine outlet, down under the sump, then straight back (on a
+      // rear-engined turbo, back means away from the engine's pulley end, out of the tail)
       const y = Math.min(s.y - 0.05, yLow);
-      paths[k] = fitCurve((beta) => bendPath([s, s.clone().addScaledVector(ax, 0.05), new V3(s.x + 0.12, y, s.z), new V3(s.x + 0.12 + 0.3 * p.len + beta, y, s.z)], 0.06), p.len);
+      paths[k] = fitCurve((beta) => bendPath([s, s.clone().addScaledVector(ax, 0.05), new V3(s.x + xs * 0.12, y, s.z),
+        rearTurbo ? new V3(s.x - 0.12 - 0.3 * p.len - beta, y, s.z) : new V3(s.x + 0.12 + 0.3 * p.len + beta, y, s.z)], 0.06), p.len);
       return;
     }
     paths[k] = fitCurve((beta) => {
@@ -1331,6 +1361,19 @@ function buildBoostParts(L, H, crank, root) {
   }
   // intercooler core between its two tanks: a finned block facing forward
   for (const c of bo.coolers) {
+    if (c.flat) {
+      // lying flat (a rear-engined turbo's, under the spoiler): air passes down through it
+      const core = new THREE.Mesh(new THREE.BoxGeometry(c.H, c.T, c.W), coreMat);
+      core.position.copy(c.c);
+      g.add(core);
+      const nf = Math.max(6, Math.round(c.H / 0.014));
+      for (let i = 0; i < nf; i++) {
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.0025, 0.003, c.W * 0.98), alu);
+        fin.position.set(c.c.x - c.H / 2 + c.H * (i + 0.5) / nf, c.c.y + c.T / 2 + 0.0015, c.c.z);
+        g.add(fin);
+      }
+      continue;
+    }
     const core = new THREE.Mesh(new THREE.BoxGeometry(c.T, c.H, c.W), coreMat);
     core.position.copy(c.c);
     g.add(core);
